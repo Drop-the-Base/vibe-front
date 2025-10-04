@@ -1,6 +1,5 @@
 package com.example.uknf.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,7 +15,6 @@ public class FaqCategory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "category_id")
-    @JsonIgnore
     private Integer id;
 
     @Column(name = "name", nullable = false, unique = true, length = 100)
