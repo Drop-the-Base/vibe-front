@@ -517,7 +517,20 @@ export function Messages() {
                   <X className="mr-2 h-4 w-4" />
                   Zamknij
                 </Button>
-                <Button>
+                <Button
+                  onClick={() => {
+                  if (!selectedMessage) return;
+                  setIsDialogOpen(false);
+                  setIsComposeOpen(true);
+                  setComposeTo(selectedMessage.from);
+                  setComposeSubject(
+                    selectedMessage.subject.startsWith('Re:') ? selectedMessage.subject : `Re: ${selectedMessage.subject}`
+                  );
+                  setComposeContent(
+                    `\n\n--- Oryginalna wiadomosc ---\nOd: ${selectedMessage.from}\nDo: ${selectedMessage.to}\nData: ${formatDateTime(selectedMessage.date)}\n\n${selectedMessage.content}`
+                  );
+                  }}
+                >
                   <Reply className="mr-2 h-4 w-4" />
                   Odpowiedz
                 </Button>
