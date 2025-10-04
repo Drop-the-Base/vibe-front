@@ -33,6 +33,8 @@ type ColumnFilterOption = {
   value: string;
 };
 
+const ALL_SELECT_VALUE = '__all__';
+
 type ColumnFilterConfig =
   | {
       type: 'text';
@@ -438,9 +440,12 @@ export function DataTable<T extends Record<string, any>>({
                           )}
                           {column.filter.type === 'select' && (
                             <Select
-                              value={columnFilters[column.key] ?? ''}
+                              value={columnFilters[column.key] ?? ALL_SELECT_VALUE}
                               onValueChange={(value) =>
-                                handleColumnFilterChange(column.key, value)
+                                handleColumnFilterChange(
+                                  column.key,
+                                  value === ALL_SELECT_VALUE ? undefined : value,
+                                )
                               }
                             >
                               <SelectTrigger
@@ -454,7 +459,9 @@ export function DataTable<T extends Record<string, any>>({
                                 />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">Wszystkie</SelectItem>
+                                <SelectItem value={ALL_SELECT_VALUE}>
+                                  Wszystkie
+                                </SelectItem>
                                 {column.filter.options.map((option) => (
                                   <SelectItem key={option.value} value={option.value}>
                                     {option.label}
