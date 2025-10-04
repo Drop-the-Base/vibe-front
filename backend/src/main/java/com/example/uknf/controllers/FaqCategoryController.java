@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/faq-categories")
+@RequestMapping("/faq-categories")
 public class FaqCategoryController {
 
     @Autowired
