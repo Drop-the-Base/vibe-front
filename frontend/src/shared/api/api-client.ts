@@ -102,6 +102,18 @@ export const apiClient = {
       headers: ensureJsonHeaders(config?.headers),
       body: body !== undefined ? JSON.stringify(body) : undefined,
     }),
+  put: <T>(path: string, body?: unknown, config?: RequestConfig) =>
+    request<T>(path, {
+      ...config,
+      method: 'PUT',
+      headers: ensureJsonHeaders(config?.headers),
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }),
+  delete: <T>(path: string, config?: RequestConfig) =>
+    request<T>(path, {
+      ...config,
+      method: 'DELETE',
+    }),
 };
 
 export type ApiClient = typeof apiClient;
