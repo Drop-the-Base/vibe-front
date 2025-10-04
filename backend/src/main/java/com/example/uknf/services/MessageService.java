@@ -61,6 +61,12 @@ public class MessageService {
         return repository.save(message);
     }
 
+    @Transactional(readOnly = true)
+    public Message findById(Long id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Message not found: id=" + id));
+    }
+
     private UUID resolveThreadId(String provided) {
         if (provided == null || provided.isBlank()) {
             return UUID.randomUUID();
