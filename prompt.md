@@ -170,3 +170,13 @@ w formie ikon lub menu hamburgera,
 − każda z funkcjonalności powinna być jasno oznaczona, łatwo dostępna i reagować
 natychmiast (dynamiczne zawężanie wyświetlanej listy wyników, animacje ładowania,
 wyraźne przyciski).
+
+dodaj stronę logowania i zapisu nowych użytkowaników. niech twardo zapisanym użytkownikiem będzie login kowalski password: kowalski
+
+stronę wiadomości, tak, żeby naciśnięcie wiadomości powodowało jej wyświetlenie
+
+## add modals
+Update the Entities table to display all the values and also add modal to create new entities
+
+stwórz dodawanie nowych wiadomości 
+powinno być miejsce na temat maila, adresata, treść maila i załączniki. strona powinna pojawiać się tak jak otwieranie wiadomości czyli poprzez modal

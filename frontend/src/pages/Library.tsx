@@ -1,5 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { libraryFiles } from '../lib/mock-data';
+import { apiClient } from '../shared/api/api-client';
+import { API_BASE_URL } from '../shared/config/environment';
 import { DataTable, Column } from '../components/DataTable';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -13,6 +15,42 @@ import {
 } from '../components/ui/dropdown-menu';
 
 export function Library() {
+  const [files, setFiles] = useState<any[]>(libraryFiles);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadCategory, setUploadCategory] = useState('');
+  const [uploadVersion, setUploadVersion] = useState('');
+  const [uploadTags, setUploadTags] = useState('');
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await apiClient.get<any[]>('/files');
+        const mapped = (data || []).map((f: any) => ({
+          name: f.filename,
+          type: f.filename?.split('.')?.pop() || 'file',
+          category: f.category || '',
+          version: f.version || '',
+          size: f.size ? `${(f.size / 1024).toFixed(2)} KB` : '—',
+          uploadedBy: f.uploadedBy || '-',
+          uploadedDate: f.createdAt ?? null,
+          accessLevel: 'public',
+          tags: f.tags ? String(f.tags).split(',').map((t: string) => t.trim()).filter(Boolean) : [],
+          raw: f,
+        }));
+        setFiles(mapped);
+      } catch (err: any) {
+        setError(err.message || String(err));
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
   const getAccessLevelVariant = (level: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (level) {
       case 'public':
@@ -37,62 +75,32 @@ export function Library() {
 
   const typeOptions = useMemo(
     () =>
-      Array.from(
-        new Set(
-          libraryFiles
-            .map((file) => file.type)
-            .filter((value): value is string => Boolean(value)),
-        ),
-      ).map((value) => ({
-        label: value,
-        value,
-      })),
-    [],
+      Array.from(new Set(files.map((file) => file.type).filter(Boolean)))
+        .map((value: any) => ({ label: String(value), value: String(value) })),
+    [files],
   );
 
   const categoryOptions = useMemo(
     () =>
-      Array.from(
-        new Set(
-          libraryFiles
-            .map((file) => file.category)
-            .filter((value): value is string => Boolean(value)),
-        ),
-      ).map((value) => ({
-        label: value,
-        value,
-      })),
-    [],
+      Array.from(new Set(files.map((file) => file.category).filter(Boolean)))
+        .map((value: any) => ({ label: String(value), value: String(value) })),
+    [files],
   );
 
   const authorOptions = useMemo(
     () =>
-      Array.from(
-        new Set(
-          libraryFiles
-            .map((file) => file.uploadedBy)
-            .filter((value): value is string => Boolean(value)),
-        ),
-      ).map((value) => ({
-        label: value,
-        value,
-      })),
-    [],
+      Array.from(new Set(files.map((file) => file.uploadedBy).filter(Boolean)))
+        .map((value: any) => ({ label: String(value), value: String(value) })),
+    [files],
   );
 
   const accessOptions = useMemo(
     () =>
-      Array.from(
-        new Set(
-          libraryFiles
-            .map((file) => file.accessLevel)
-            .filter((value): value is string => Boolean(value)),
-        ),
-      ).map((value) => ({
-        label: getAccessLevelLabel(value),
-        value,
+      Array.from(new Set(files.map((file) => file.accessLevel).filter(Boolean))).map((value: any) => ({
+        label: getAccessLevelLabel(String(value)),
+        value: String(value),
       })),
-    [],
+    [files],
   );
 
   const columns: Column<typeof libraryFiles[0]>[] = [
@@ -181,35 +189,28 @@ export function Library() {
             Repozytorium plików, instrukcji i formularzy
           </p>
         </div>
-        <Button>
-          <Upload className="mr-2 h-4 w-4" />
-          Dodaj plik
-        </Button>
+        <div>
+          <Button onClick={() => setIsUploadOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Dodaj plik
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-2 flex-wrap">
         <Button variant="outline" size="sm">
-          Wszystkie ({libraryFiles.length})
-        </Button>
-        <Button variant="outline" size="sm">
-          Instrukcje ({libraryFiles.filter(f => f.category === 'Instrukcje').length})
-        </Button>
-        <Button variant="outline" size="sm">
-          Formularze ({libraryFiles.filter(f => f.category === 'Formularze').length})
-        </Button>
-        <Button variant="outline" size="sm">
-          Regulacje ({libraryFiles.filter(f => f.category === 'Regulacje').length})
+          Wszystkie ({files.length})
         </Button>
       </div>
 
       <DataTable
-        data={libraryFiles}
+        data={files}
         columns={columns}
         searchPlaceholder="Szukaj plików po nazwie, kategorii lub tagach..."
         exportFilename="biblioteka"
         exportLimit={2000}
         bodyHeight="65vh"
-        actions={(file) => (
+          actions={(file) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm">
@@ -221,9 +222,11 @@ export function Library() {
                 <Eye className="mr-2 h-4 w-4" />
                 Podgląd
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Download className="mr-2 h-4 w-4" />
-                Pobierz
+              <DropdownMenuItem asChild>
+                <a href={`/files/${encodeURIComponent((file as any).raw?.filename || file.name)}/download`}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Pobierz
+                </a>
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Edit className="mr-2 h-4 w-4" />
@@ -237,6 +240,62 @@ export function Library() {
           </DropdownMenu>
         )}
       />
+
+      {/* Simple upload modal */}
+      {isUploadOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-popover p-6 rounded shadow max-w-md w-full">
+            <h3 className="mb-4">Prześlij plik</h3>
+            <div className="space-y-3">
+              <input type="file" onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)} />
+              <input type="text" placeholder="Kategoria" value={uploadCategory} onChange={(e) => setUploadCategory(e.target.value)} className="w-full input" />
+              <input type="text" placeholder="Wersja" value={uploadVersion} onChange={(e) => setUploadVersion(e.target.value)} className="w-full input" />
+              <input type="text" placeholder="Tagi (oddzielone przecinkami)" value={uploadTags} onChange={(e) => setUploadTags(e.target.value)} className="w-full input" />
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setIsUploadOpen(false)}>Anuluj</Button>
+              <Button onClick={async () => {
+                if (!uploadFile) return;
+                const fd = new FormData();
+                fd.append('file', uploadFile);
+                if (uploadCategory) fd.append('category', uploadCategory);
+                if (uploadVersion) fd.append('version', uploadVersion);
+                if (uploadTags) fd.append('tags', uploadTags);
+                try {
+                  setLoading(true);
+                  await fetch(`${API_BASE_URL}/files`, { method: 'POST', body: fd });
+                  // reload list
+                  const data = await apiClient.get<any[]>('/files');
+                  const mapped = (data || []).map((f: any) => ({
+                    name: f.filename,
+                    type: f.filename?.split('.')?.pop() || 'file',
+                    category: f.category || '',
+                    version: f.version || '',
+                    size: f.size ? `${(f.size / 1024).toFixed(2)} KB` : '—',
+                    uploadedBy: f.uploadedBy || '-',
+                    uploadedDate: f.createdAt ?? null,
+                    accessLevel: 'public',
+                    tags: f.tags ? f.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
+                    raw: f,
+                  }));
+                  setFiles(mapped);
+                  setIsUploadOpen(false);
+                  setUploadFile(null);
+                  setUploadCategory('');
+                  setUploadVersion('');
+                  setUploadTags('');
+                } catch (err: any) {
+                  setError(err.message || String(err));
+                } finally {
+                  setLoading(false);
+                }
+              }}>
+                Prześlij
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
