@@ -1,0 +1,43 @@
+# React frontend
+node_modules/
+build/
+dist/
+.env
+*.log
+
+# Java backend
+target/
+bin/
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+*.log
+*.db
+*.h2.db
+*.sqlite
+*.swp
+*.swo
+*.bak
+*.tmp
+*.lock
+/.idea/
+*.project
+*.classpath
+
+# Docker
+*.pid
+*.seed
+*.pid.lock
+docker-compose.override.yml
+.env.local
+.env.*.local
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Misc
+.vscode/
+*.orig
