@@ -1,6 +1,6 @@
 package com.example.uknf.dtos;
 
-import com.example.uknf.entites.TestEntity;
+import com.example.uknf.entities.TestEntity;
 
 public record TestResponse(
         Integer id,

@@ -1,19 +1,19 @@
 package com.example.uknf.services;
 
+import com.example.uknf.entities.TestEntity;
 import com.example.uknf.exceptions.NotFoundException;
 import com.example.uknf.repositories.TestRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.example.uknf.entities.TestEntity;
 
 import java.util.List;
 
 @Service
 @Transactional
-public class TestService {
+public class UserService {
     private final TestRepository repo;
 
-    public TestService(TestRepository repo) {
+    public UserService(TestRepository repo) {
         this.repo = repo;
     }
 

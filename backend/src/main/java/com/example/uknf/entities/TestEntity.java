@@ -1,4 +1,4 @@
-package com.example.uknf.entites;
+package com.example.uknf.entities;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
