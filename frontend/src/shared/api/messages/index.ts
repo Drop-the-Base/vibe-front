@@ -42,3 +42,10 @@ export const createMessage = (payload: CreateMessagePayload) =>
   apiClient.post<MessageDto>('/messages', payload);
 
 export const fetchMessages = () => apiClient.get<MessageDto[]>('/messages');
+
+export interface MessageReadPayload {
+  read: boolean;
+}
+
+export const updateMessageReadStatus = (id: number, payload: MessageReadPayload) =>
+  apiClient.patch<MessageDto>(`/messages/${id}/read`, payload);

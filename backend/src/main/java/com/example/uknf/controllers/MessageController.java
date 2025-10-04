@@ -3,6 +3,7 @@ package com.example.uknf.controllers;
 import com.example.uknf.services.MessageService;
 import com.example.uknf.dtos.messages.MessageCreateRequest;
 import com.example.uknf.dtos.messages.MessageResponse;
+import com.example.uknf.dtos.messages.MessageReadRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -36,4 +37,10 @@ public class MessageController {
     public MessageResponse create(@RequestBody @Valid MessageCreateRequest request) {
         return MessageResponse.from(service.create(request));
     }
+
+    @PatchMapping("/{id}/read")
+    public MessageResponse updateReadStatus(@PathVariable Long id, @RequestBody @Valid MessageReadRequest request) {
+        return MessageResponse.from(service.updateReadStatus(id, request.read()));
+    }
+
 }
