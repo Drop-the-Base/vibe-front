@@ -532,7 +532,7 @@ export function Entities() {
       />
 
       <Dialog open={isCreateOpen} onOpenChange={handleDialogChange}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Nowy podmiot</DialogTitle>
             <DialogDescription>
