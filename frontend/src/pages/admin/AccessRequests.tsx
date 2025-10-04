@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { accessRequests } from '../../lib/mock-data';
 import { DataTable, Column } from '../../components/DataTable';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -11,15 +10,32 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
+import { useApiData } from '../../shared/hooks/use-api-data';
+import { apiClient } from '../../shared/api/api-client';
+
+interface AccessRequestDto {
+  id: number;
+  userName: string;
+  email: string;
+  entityName: string;
+  requestedPermissions: string[];
+  status: string;
+  requestDate?: string | null;
+  reviewedBy?: string | null;
+  reviewDate?: string | null;
+}
 
 export function AccessRequests() {
-  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+  const { data, reload } = useApiData<AccessRequestDto[]>(() => apiClient.get('/access-requests'), []);
+  const accessRequests = data ?? [];
+
+  const getStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch (status) {
-      case 'approved':
+      case 'accepted':
         return 'default';
-      case 'pending':
+      case 'new':
         return 'secondary';
-      case 'rejected':
+      case 'blocked':
         return 'destructive';
       default:
         return 'outline';
@@ -28,83 +44,34 @@ export function AccessRequests() {
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
-      pending: 'Oczekujący',
-      approved: 'Zaakceptowany',
-      rejected: 'Odrzucony',
+      draft: 'Roboczy',
+      new: 'Nowy',
+      accepted: 'Zaakceptowany',
+      blocked: 'Zablokowany',
+      updated: 'Zaktualizowany',
     };
     return labels[status] || status;
   };
 
   const statusOptions = useMemo(
     () =>
-      Array.from(
-        new Set(
-          accessRequests
-            .map((request) => request.status)
-            .filter((status): status is string => Boolean(status)),
-        ),
-      ).map((status) => ({
+      Array.from(new Set(accessRequests.map((request) => request.status))).map((status) => ({
         label: getStatusLabel(status),
         value: status,
       })),
-    [],
+    [accessRequests],
   );
 
-  const roleOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          accessRequests
-            .map((request) => request.requestedRole)
-            .filter((role): role is string => Boolean(role)),
-        ),
-      ).map((role) => ({
-        label: role,
-        value: role,
-      })),
-    [],
-  );
-
-  const reviewerOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          accessRequests
-            .map((request) => request.reviewedBy)
-            .filter((value): value is string => Boolean(value)),
-        ),
-      ).map((value) => ({
-        label: value,
-        value,
-      })),
-    [],
-  );
-
-  const columns: Column<typeof accessRequests[0]>[] = [
+  const columns: Column<AccessRequestDto>[] = [
+    { key: 'id', label: 'ID', filter: { type: 'text', placeholder: 'Filtruj ID' } },
+    { key: 'userName', label: 'Użytkownik', filter: { type: 'text', placeholder: 'Filtruj użytkownika' } },
+    { key: 'email', label: 'Email', filter: { type: 'text', placeholder: 'Filtruj email' } },
+    { key: 'entityName', label: 'Podmiot', filter: { type: 'text', placeholder: 'Filtruj podmiot' } },
     {
-      key: 'id',
-      label: 'ID',
-      filter: { type: 'text', placeholder: 'Filtruj ID' },
-    },
-    {
-      key: 'userName',
-      label: 'Użytkownik',
-      filter: { type: 'text', placeholder: 'Filtruj użytkownika' },
-    },
-    {
-      key: 'email',
-      label: 'Email',
-      filter: { type: 'text', placeholder: 'Filtruj email' },
-    },
-    {
-      key: 'entityName',
-      label: 'Podmiot',
-      filter: { type: 'text', placeholder: 'Filtruj podmiot' },
-    },
-    {
-      key: 'requestedRole',
-      label: 'Żądana rola',
-      filter: { type: 'select', placeholder: 'Wybierz rolę', options: roleOptions },
+      key: 'requestedPermissions',
+      label: 'Żądane uprawnienia',
+      filter: { type: 'text', placeholder: 'Filtruj uprawnienia' },
+      render: (value) => value.join(', '),
     },
     {
       key: 'status',
@@ -120,12 +87,12 @@ export function AccessRequests() {
       key: 'requestDate',
       label: 'Data wniosku',
       filter: { type: 'daterange', fromLabel: 'Od', toLabel: 'Do' },
-      render: (value) => formatDateTime(value),
+      render: (value) => (value ? formatDateTime(value) : '-'),
     },
     {
       key: 'reviewedBy',
       label: 'Rozpatrzony przez',
-      filter: { type: 'select', placeholder: 'Wybierz osobę', options: reviewerOptions },
+      filter: { type: 'text', placeholder: 'Filtruj osobę' },
       render: (value) => value || '-',
     },
     {
@@ -136,30 +103,18 @@ export function AccessRequests() {
     },
   ];
 
+  const updateStatus = async (id: number, status: 'accepted' | 'blocked') => {
+    await apiClient.patch(`/access-requests/${id}`, { status });
+    reload();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2>Wnioski o dostęp</h2>
-          <p className="text-muted-foreground">
-            Zarządzanie wnioskami o dostęp do systemu
-          </p>
+          <p className="text-muted-foreground">Zarządzanie wnioskami o dostęp do systemu</p>
         </div>
-      </div>
-
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm">
-          Wszystkie ({accessRequests.length})
-        </Button>
-        <Button variant="outline" size="sm">
-          Oczekujące ({accessRequests.filter(r => r.status === 'pending').length})
-        </Button>
-        <Button variant="outline" size="sm">
-          Zaakceptowane ({accessRequests.filter(r => r.status === 'approved').length})
-        </Button>
-        <Button variant="outline" size="sm">
-          Odrzucone ({accessRequests.filter(r => r.status === 'rejected').length})
-        </Button>
       </div>
 
       <DataTable
@@ -180,15 +135,15 @@ export function AccessRequests() {
                 <Eye className="mr-2 h-4 w-4" />
                 Podgląd
               </DropdownMenuItem>
-              {request.status === 'pending' && (
+              {request.status === 'new' && (
                 <>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => updateStatus(request.id, 'accepted')}>
                     <CheckCircle2 className="mr-2 h-4 w-4" />
                     Akceptuj
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive">
+                  <DropdownMenuItem className="text-destructive" onSelect={() => updateStatus(request.id, 'blocked')}>
                     <XCircle className="mr-2 h-4 w-4" />
-                    Odrzuć
+                    Zablokuj
                   </DropdownMenuItem>
                 </>
               )}

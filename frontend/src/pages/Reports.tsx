@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { reports } from '../lib/mock-data';
 import { DataTable, Column } from '../components/DataTable';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -11,9 +10,26 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
+import { useApiData } from '../shared/hooks/use-api-data';
+import { apiClient } from '../shared/api/api-client';
+
+interface ReportDto {
+  id: number;
+  reportCode: string;
+  title: string;
+  entityName: string;
+  type: string;
+  status: string;
+  submittedDate?: string | null;
+  dueDate?: string | null;
+  assignedTo?: string | null;
+}
 
 export function Reports() {
-  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+  const { data } = useApiData<ReportDto[]>(() => apiClient.get('/reports'), []);
+  const reports = data ?? [];
+
+  const getStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch (status) {
       case 'accepted':
         return 'default';
@@ -34,60 +50,48 @@ export function Reports() {
       in_validation: 'W trakcie walidacji',
       accepted: 'Zaakceptowane',
       rejected: 'Odrzucone',
+      technical_error: 'Błąd techniczny',
+      timeout: 'Przekroczono czas',
+      challenged: 'Zakwestionowane',
     };
     return labels[status] || status;
   };
 
   const statusOptions = useMemo(
     () =>
-      Array.from(
-        new Set(
-          reports
-            .map((report) => report.status)
-            .filter((status): status is string => Boolean(status)),
-        ),
-      ).map((status) => ({
+      Array.from(new Set(reports.map((report) => report.status))).map((status) => ({
         label: getStatusLabel(status),
         value: status,
       })),
-    [],
+    [reports],
   );
 
   const typeOptions = useMemo(
     () =>
-      Array.from(
-        new Set(
-          reports
-            .map((report) => report.type)
-            .filter((type): type is string => Boolean(type)),
-        ),
-      ).map((type) => ({
+      Array.from(new Set(reports.map((report) => report.type))).map((type) => ({
         label: type,
         value: type,
       })),
-    [],
+    [reports],
   );
 
   const assigneeOptions = useMemo(
     () =>
-      Array.from(
-        new Set(
-          reports
-            .map((report) => report.assignedTo)
-            .filter((value): value is string => Boolean(value)),
-        ),
-      ).map((assignee) => ({
-        label: assignee,
-        value: assignee,
-      })),
-    [],
+      Array.from(new Set(reports.map((report) => report.assignedTo).filter((value): value is string => Boolean(value)))).map(
+        (assignee) => ({
+          label: assignee,
+          value: assignee,
+        }),
+      ),
+    [reports],
   );
 
-  const columns: Column<typeof reports[0]>[] = [
+  const columns: Column<ReportDto>[] = [
     {
-      key: 'id',
+      key: 'reportCode',
       label: 'ID',
       filter: { type: 'text', placeholder: 'Filtruj ID' },
+      render: (_, row) => row.reportCode,
     },
     {
       key: 'title',
@@ -124,7 +128,7 @@ export function Reports() {
       key: 'dueDate',
       label: 'Termin',
       filter: { type: 'daterange', fromLabel: 'Od', toLabel: 'Do' },
-      render: (value) => formatDateTime(value),
+      render: (value) => (value ? formatDateTime(value) : '-'),
     },
     {
       key: 'assignedTo',
