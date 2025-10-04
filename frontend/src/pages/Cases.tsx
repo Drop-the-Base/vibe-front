@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { cases } from '../lib/mock-data';
 import { DataTable, Column } from '../components/DataTable';
 import { Badge } from '../components/ui/badge';
@@ -56,22 +56,71 @@ export function Cases() {
     return labels[priority] || priority;
   };
 
+  const statusOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          cases
+            .map((item) => item.status)
+            .filter((status): status is string => Boolean(status)),
+        ),
+      ).map((status) => ({
+        label: getStatusLabel(status),
+        value: status,
+      })),
+    [],
+  );
+
+  const priorityOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          cases
+            .map((item) => item.priority)
+            .filter((priority): priority is string => Boolean(priority)),
+        ),
+      ).map((priority) => ({
+        label: getPriorityLabel(priority),
+        value: priority,
+      })),
+    [],
+  );
+
+  const assigneeOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          cases
+            .map((item) => item.assignedTo)
+            .filter((assignee): assignee is string => Boolean(assignee)),
+        ),
+      ).map((assignee) => ({
+        label: assignee,
+        value: assignee,
+      })),
+    [],
+  );
+
   const columns: Column<typeof cases[0]>[] = [
     {
       key: 'id',
       label: 'ID',
+      filter: { type: 'text', placeholder: 'Filtruj ID' },
     },
     {
       key: 'title',
       label: 'Tytuł sprawy',
+      filter: { type: 'text', placeholder: 'Filtruj tytuł' },
     },
     {
       key: 'entityName',
       label: 'Podmiot',
+      filter: { type: 'text', placeholder: 'Filtruj podmiot' },
     },
     {
       key: 'status',
       label: 'Status',
+      filter: { type: 'select', placeholder: 'Wybierz status', options: statusOptions },
       render: (value) => (
         <Badge variant={getStatusVariant(value)}>
           {getStatusLabel(value)}
@@ -81,6 +130,7 @@ export function Cases() {
     {
       key: 'priority',
       label: 'Priorytet',
+      filter: { type: 'select', placeholder: 'Wybierz priorytet', options: priorityOptions },
       render: (value) => (
         <Badge variant={getPriorityVariant(value)}>
           {getPriorityLabel(value)}
@@ -90,15 +140,18 @@ export function Cases() {
     {
       key: 'assignedTo',
       label: 'Przypisane do',
+      filter: { type: 'select', placeholder: 'Wybierz osobę', options: assigneeOptions },
     },
     {
       key: 'createdDate',
       label: 'Data utworzenia',
+      filter: { type: 'daterange', fromLabel: 'Od', toLabel: 'Do' },
       render: (value) => formatDateTime(value),
     },
     {
       key: 'updatedDate',
       label: 'Ostatnia aktualizacja',
+      filter: { type: 'daterange', fromLabel: 'Od', toLabel: 'Do' },
       render: (value) => formatDateTime(value),
     },
   ];
@@ -135,6 +188,7 @@ export function Cases() {
         columns={columns}
         searchPlaceholder="Szukaj spraw..."
         exportFilename="sprawy"
+        exportLimit={2000}
         actions={(caseItem) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
