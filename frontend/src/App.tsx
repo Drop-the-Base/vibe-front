@@ -14,6 +14,7 @@ import { AccessRequests } from './pages/admin/AccessRequests';
 import { Roles } from './pages/admin/Roles';
 import { PasswordPolicy } from './pages/admin/PasswordPolicy';
 import { Login } from './pages/Login';
+import { Register } from './pages/Register';
 import { Toaster } from './components/ui/sonner';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -32,6 +33,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/register" element={isAuthenticated ? <Navigate to="/" replace /> : <Register />} />
       
       <Route
         path="/"

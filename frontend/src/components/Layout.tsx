@@ -190,6 +190,11 @@ export function Layout() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <Button variant="outline" onClick={logout} className="gap-2">
+            <LogOut className="h-4 w-4" />
+            Wyloguj
+          </Button>
         </div>
       </header>
 

@@ -9,11 +9,13 @@ import { Building2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { toast } from 'sonner@2.0.3';
 
-export function Login() {
+export function Register() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { register } = useAuth();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,14 +23,27 @@ export function Login() {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    // Walidacja
+    if (password !== confirmPassword) {
+      setError('Hasła nie są identyczne');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Hasło musi mieć minimum 6 znaków');
+      setLoading(false);
+      return;
+    }
     
     try {
-      await login(email, password);
-      toast.success('Zalogowano pomyślnie');
-      navigate('/');
+      await register(name, email, password);
+      toast.success('Konto zostało utworzone. Możesz się teraz zalogować.');
+      navigate('/login');
     } catch (error: any) {
-      setError(error.message || 'Nieprawidłowy login lub hasło');
-      toast.error(error.message || 'Nieprawidłowy login lub hasło');
+      setError(error.message || 'Wystąpił błąd podczas rejestracji');
+      toast.error(error.message || 'Wystąpił błąd podczas rejestracji');
     } finally {
       setLoading(false);
     }
@@ -41,9 +56,9 @@ export function Login() {
           <div className="flex justify-center mb-4">
             <Building2 className="h-12 w-12 text-primary" />
           </div>
-          <CardTitle>Platforma Komunikacyjna UKNF</CardTitle>
+          <CardTitle>Rejestracja nowego użytkownika</CardTitle>
           <CardDescription>
-            Zaloguj się do systemu komunikacji z podmiotami nadzorowanymi
+            Utwórz konto w Platformie Komunikacyjnej UKNF
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -56,16 +71,29 @@ export function Login() {
             )}
             
             <div className="space-y-2">
-              <Label htmlFor="email">Login / Email</Label>
+              <Label htmlFor="name">Imię i nazwisko</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Jan Kowalski"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                type="text"
-                placeholder="kowalski"
+                type="email"
+                placeholder="jan.kowalski@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
+            
             <div className="space-y-2">
               <Label htmlFor="password">Hasło</Label>
               <Input
@@ -74,32 +102,43 @@ export function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
               />
             </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Potwierdź hasło</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+              />
+            </div>
+            
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Logowanie...' : 'Zaloguj się'}
+              {loading ? 'Rejestrowanie...' : 'Zarejestruj się'}
             </Button>
           </form>
 
-          <div className="mt-6 text-center space-y-2">
-            <Button variant="link" className="text-sm">
-              Zapomniałeś hasła?
-            </Button>
+          <div className="mt-6 text-center">
             <div className="text-sm text-muted-foreground">
-              Nie masz konta?{' '}
+              Masz już konto?{' '}
               <Button 
                 variant="link" 
                 className="p-0 h-auto" 
-                onClick={() => navigate('/register')}
+                onClick={() => navigate('/login')}
               >
-                Zarejestruj się
+                Zaloguj się
               </Button>
             </div>
           </div>
 
           <div className="mt-6 p-4 bg-muted rounded-lg">
             <p className="text-xs text-muted-foreground">
-              Demo - Login: <strong>kowalski</strong>, Hasło: <strong>kowalski</strong>
+              Po rejestracji będziesz mógł się zalogować używając podanego adresu email i hasła.
             </p>
           </div>
         </CardContent>
