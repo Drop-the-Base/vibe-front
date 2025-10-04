@@ -1,9 +1,7 @@
-import React, { useState, useRef, useMemo } from 'react';
-import { messages } from '../lib/mock-data';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { DataTable, Column } from '../components/DataTable';
-import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { Mail, Paperclip, Eye, Reply, Trash, Download, X } from 'lucide-react';
+import { Mail, Paperclip, Eye, Reply, Trash, Download, X, RefreshCcw } from 'lucide-react';
 import { formatDateTime } from '../lib/utils';
 import {
   DropdownMenu,
@@ -21,19 +19,37 @@ import {
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Separator } from '../components/ui/separator';
 import { useAuth } from '../features/auth';
-import { createMessage } from '../shared/api/messages';
+import { createMessage, fetchMessages, MessageDto } from '../shared/api/messages';
 import { ApiError } from '../shared/api/api-client';
 import { toast } from 'sonner@2.0.3';
 
-type MessageType = typeof messages[0];
+type AttachmentInfo = { name: string; size: string };
+
+type MessageRow = {
+  id: string;
+  threadId?: string;
+  subject: string;
+  from: string;
+  to: string;
+  entityName: string;
+  date: string;
+  read: boolean;
+  hasAttachments: boolean;
+  content: string;
+  attachments?: AttachmentInfo[];
+  status?: string;
+  direction?: string;
+};
 
 export function Messages() {
   const { user, currentEntity } = useAuth();
-  const [selectedMessage, setSelectedMessage] = useState<MessageType | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<MessageRow | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // lokalny stan wiadomości żeby móc dodawać nowe wiadomości w UI (mock)
-  const [localMessages, setLocalMessages] = useState<MessageType[]>(messages);
+  // lokalny stan wiadomości synchronizowany z API
+  const [localMessages, setLocalMessages] = useState<MessageRow[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // compose (nowa wiadomość)
   const [isComposeOpen, setIsComposeOpen] = useState(false);
@@ -41,10 +57,48 @@ export function Messages() {
   const [composeSubject, setComposeSubject] = useState('');
   const [composeTo, setComposeTo] = useState('');
   const [composeContent, setComposeContent] = useState('');
-  const [composeAttachments, setComposeAttachments] = useState<Array<{ name: string; size: string }>>([]);
+  const [composeAttachments, setComposeAttachments] = useState<AttachmentInfo[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const openMessage = (message: MessageType) => {
+  const mapToRow = useCallback(
+    (dto: MessageDto): MessageRow => ({
+      id: dto.id != null ? dto.id.toString() : dto.threadId ?? ('tmp-' + Date.now().toString()),
+      threadId: dto.threadId,
+      subject: dto.subject,
+      from: dto.sender,
+      to: dto.recipient,
+      entityName: dto.entityRef ?? dto.recipient,
+      date: dto.createdAt ?? new Date().toISOString(),
+      read: Boolean(dto.readAt),
+      hasAttachments: dto.hasAttachments,
+      content: dto.content,
+      status: dto.status,
+      direction: dto.direction,
+    }),
+    [],
+  );
+
+  const loadMessages = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      const data = await fetchMessages();
+      setLocalMessages(data.map(mapToRow));
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : 'Nie udalo sie pobrac wiadomosci.';
+      setLoadError(message);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [mapToRow]);
+
+  useEffect(() => {
+    loadMessages();
+  }, [loadMessages]);
+
+  const openMessage = (message: MessageRow) => {
     setSelectedMessage(message);
     setIsDialogOpen(true);
   };
@@ -99,7 +153,7 @@ export function Messages() {
     [localMessages],
   );
 
-  const columns: Column<typeof messages[0]>[] = [
+  const columns: Column<MessageRow>[] = [
     {
       key: 'read',
       label: '',
@@ -149,12 +203,12 @@ export function Messages() {
 
   const handleSend = async () => {
     if (!composeSubject.trim() || !composeTo.trim() || !composeContent.trim()) {
-      toast.error('Wypełnij temat, adresata i treść wiadomości.');
+      toast.error('Wypelnij temat, adresata i tresc wiadomosci.');
       return;
     }
 
     if (!user) {
-      toast.error('Brak uwierzytelnionego użytkownika.');
+      toast.error('Brak uwierzytelnionego uzytkownika.');
       return;
     }
 
@@ -178,21 +232,15 @@ export function Messages() {
         hasAttachments: attachments.length > 0,
       });
 
-      const newMessage: MessageType = {
-        id: created.id != null ? created.id.toString() : 'tmp-' + Date.now().toString(),
-        subject: created.subject,
-        from: created.sender,
-        to: created.recipient,
-        entityName: created.entityRef ?? created.recipient,
-        date: created.createdAt ?? new Date().toISOString(),
-        read: Boolean(created.readAt),
-        hasAttachments: created.hasAttachments || attachments.length > 0,
-        content: created.content,
+      const baseMessage = mapToRow(created);
+      const newMessage: MessageRow = {
+        ...baseMessage,
+        hasAttachments: baseMessage.hasAttachments || attachments.length > 0,
         attachments: attachments.length > 0 ? attachments : undefined,
       };
 
       setLocalMessages((prev) => [newMessage, ...prev]);
-      toast.success('Wiadomość została wysłana.');
+      toast.success('Wiadomosc zostala wyslana.');
       setIsComposeOpen(false);
       setComposeSubject('');
       setComposeTo('');
@@ -200,7 +248,7 @@ export function Messages() {
       setComposeAttachments([]);
     } catch (error) {
       const message =
-        error instanceof ApiError ? error.message : 'Nie udało się wysłać wiadomości.';
+        error instanceof ApiError ? error.message : 'Nie udalo sie wyslac wiadomosci.';
       toast.error(message);
     } finally {
       setIsSending(false);
@@ -212,16 +260,32 @@ export function Messages() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2>Wiadomości</h2>
+            <h2>Wiadomosci</h2>
             <p className="text-muted-foreground">
               Dwukierunkowa komunikacja z podmiotami nadzorowanymi
             </p>
           </div>
-          <Button onClick={() => setIsComposeOpen(true)}>
-            <Mail className="mr-2 h-4 w-4" />
-            Nowa wiadomość
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadMessages}
+              disabled={isLoading}
+            >
+              <RefreshCcw className={isLoading ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
+              Odswiez
+            </Button>
+            <Button onClick={() => setIsComposeOpen(true)}>
+              <Mail className="mr-2 h-4 w-4" />
+              Nowa wiadomosc
+            </Button>
+          </div>
         </div>
+        {loadError && (
+          <p className="text-sm text-destructive">
+            {loadError}
+          </p>
+        )}
 
         <div className="flex gap-2">
           <Button variant="outline" size="sm">
@@ -231,7 +295,7 @@ export function Messages() {
             Nieprzeczytane ({localMessages.filter(m => !m.read).length})
           </Button>
           <Button variant="outline" size="sm">
-            Z załącznikami ({localMessages.filter(m => m.hasAttachments).length})
+            Z zalacznikami ({localMessages.filter(m => m.hasAttachments).length})
           </Button>
         </div>
 
@@ -392,7 +456,7 @@ export function Messages() {
                     onChange={(e) => {
                       const files = e.target.files;
                       if (!files) return;
-                      const arr: Array<{ name: string; size: string }> = [];
+                      const arr: AttachmentInfo[] = [];
                       for (let i = 0; i < files.length; i++) {
                         const f = files[i];
                         arr.push({ name: f.name, size: formatBytes(f.size) });
@@ -435,7 +499,7 @@ export function Messages() {
                 Anuluj
               </Button>
               <Button onClick={handleSend} disabled={isSending}>
-                {isSending ? 'Wysyłanie...' : 'Wyślij'}
+                {isSending ? 'Wysylanie...' : 'Wyslij'}
               </Button>
             </div>
           </div>
