@@ -49,4 +49,38 @@ public class SupervisedEntityService {
         }
 
     }
+
+    @Transactional
+    public void update(Integer id, SupervisedEntityCreateRequest r) {
+        SupervisedEntity e = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Entity with id " + id + " not found"));
+
+        e.setUknfCode(r.getUknfCode());
+        e.setName(r.getName());
+        e.setNip(r.getNip());
+        e.setKrs(r.getKrs());
+        e.setLei(r.getLei());
+        e.setStreet(r.getStreet());
+        e.setBuildingNumber(r.getBuildingNumber());
+        e.setApartmentNumber(r.getApartmentNumber());
+        e.setPostalCode(r.getPostalCode());
+        e.setCity(r.getCity());
+        e.setPhone(r.getPhone());
+        e.setEmail(r.getEmail());
+        e.setRegistryNumber(r.getRegistryNumber());
+        e.setStatus(Optional.ofNullable(r.getStatus()).filter(s -> !s.isBlank()).orElse("active"));
+        e.setCategory(r.getCategory());
+        e.setCrossBorder(Optional.ofNullable(r.getCrossBorder()).orElse(Boolean.FALSE));
+        e.setType(r.getType());
+
+        repository.save(e);
+    }
+
+    @Transactional
+    public void delete(Integer id) {
+        if (!repository.existsById(id)) {
+            throw new IllegalArgumentException("Entity with id " + id + " not found");
+        }
+        repository.deleteById(id);
+    }
 }

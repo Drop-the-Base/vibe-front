@@ -1,7 +1,9 @@
 package com.example.uknf.controllers;
 
+import com.example.uknf.dto.FaqQuestionDto;
 import com.example.uknf.entities.FaqQuestion;
 import com.example.uknf.services.FaqQuestionService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,7 +13,8 @@ import java.util.List;
 @RequestMapping("/faq-questions")
 public class FaqQuestionController {
 
-    private final FaqQuestionService faqQuestionService;
+    @Autowired
+    private FaqQuestionService faqQuestionService;
 
     public FaqQuestionController(FaqQuestionService faqQuestionService) {
         this.faqQuestionService = faqQuestionService;
@@ -28,14 +31,13 @@ public class FaqQuestionController {
     }
 
     @PostMapping
-    public ResponseEntity<FaqQuestion> createQuestion(@RequestBody FaqQuestion question) {
-        return ResponseEntity.ok(faqQuestionService.createQuestion(question));
+    public ResponseEntity<FaqQuestion> createQuestion(@RequestBody FaqQuestionDto questionDto) {
+        return ResponseEntity.ok(faqQuestionService.createQuestion(questionDto));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<FaqQuestion> updateQuestion(@PathVariable Integer id, @RequestBody FaqQuestion question) {
-        question.setId(id);
-        return ResponseEntity.ok(faqQuestionService.updateQuestion(question));
+    public ResponseEntity<FaqQuestion> updateQuestion(@PathVariable Integer id, @RequestBody FaqQuestionDto questionDto) {
+        return ResponseEntity.ok(faqQuestionService.updateQuestion(id, questionDto));
     }
 
     @DeleteMapping("/{id}")

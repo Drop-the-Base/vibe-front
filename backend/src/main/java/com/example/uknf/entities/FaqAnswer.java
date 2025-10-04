@@ -44,13 +44,12 @@ public class FaqAnswer {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "created_by", nullable = false)
-    private User createdBy; // pracownik/admin
+    private User createdBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by")
     private User updatedBy;
 
-    /* Agregaty ocen */
     @Column(name = "rating_sum", nullable = false)
     private Integer ratingSum = 0;
 
