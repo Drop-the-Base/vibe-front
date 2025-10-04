@@ -138,7 +138,7 @@ export function FAQ() {
       await createFaqQuestion({
         title: createForm.question.trim(),
         content,
-        categoryLink: category.link,
+        category,
         anonymous: createForm.anonymous,
       });
       toast.success('Pytanie zostało przesłane do weryfikacji.');

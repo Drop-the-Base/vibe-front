@@ -178,14 +178,14 @@ export const fetchFaqCategories = async (): Promise<FaqCategory[]> => {
 interface CreateFaqQuestionInput {
   title: string;
   content: string;
-  categoryLink: string;
+  category: FaqCategory;
   anonymous?: boolean;
 }
 
 export const createFaqQuestion = async ({
   title,
   content,
-  categoryLink,
+  category,
   anonymous = false,
 }: CreateFaqQuestionInput) => {
   const payload = {
@@ -193,7 +193,7 @@ export const createFaqQuestion = async ({
     content,
     status: 'new',
     anonymous,
-    category: categoryLink,
+    category,
   };
 
   cache.clear();
