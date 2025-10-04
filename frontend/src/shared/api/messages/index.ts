@@ -40,3 +40,5 @@ export interface CreateMessagePayload {
 
 export const createMessage = (payload: CreateMessagePayload) =>
   apiClient.post<MessageDto>('/messages', payload);
+
+export const fetchMessages = () => apiClient.get<MessageDto[]>('/messages');
