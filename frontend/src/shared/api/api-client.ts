@@ -102,6 +102,13 @@ export const apiClient = {
       headers: ensureJsonHeaders(config?.headers),
       body: body !== undefined ? JSON.stringify(body) : undefined,
     }),
+  patch: <T>(path: string, body?: unknown, config?: RequestConfig) =>
+    request<T>(path, {
+      ...config,
+      method: 'PATCH',
+      headers: ensureJsonHeaders(config?.headers),
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }),
   put: <T>(path: string, body?: unknown, config?: RequestConfig) =>
     request<T>(path, {
       ...config,

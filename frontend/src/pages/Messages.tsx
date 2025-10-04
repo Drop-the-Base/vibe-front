@@ -19,7 +19,7 @@ import {
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Separator } from '../components/ui/separator';
 import { useAuth } from '../features/auth';
-import { createMessage, fetchMessages, MessageDto } from '../shared/api/messages';
+import { createMessage, fetchMessages, MessageDto, updateMessageReadStatus } from '../shared/api/messages';
 import { ApiError } from '../shared/api/api-client';
 import { toast } from 'sonner@2.0.3';
 
@@ -46,12 +46,12 @@ export function Messages() {
   const [selectedMessage, setSelectedMessage] = useState<MessageRow | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // lokalny stan wiadomości synchronizowany z API
+  // lokalny stan wiadomosci synchronizowany z API
   const [localMessages, setLocalMessages] = useState<MessageRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // compose (nowa wiadomość)
+  // compose (nowa wiadomosc)
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [composeSubject, setComposeSubject] = useState('');
@@ -98,9 +98,58 @@ export function Messages() {
     loadMessages();
   }, [loadMessages]);
 
+  const applyUpdatedMessage = useCallback((updated: MessageRow) => {
+    setLocalMessages((prev) =>
+      prev.map((item) =>
+        item.id === updated.id
+          ? { ...item, ...updated, attachments: updated.attachments ?? item.attachments }
+          : item,
+      ),
+    );
+    setSelectedMessage((prev) =>
+      prev && prev.id === updated.id
+        ? { ...prev, ...updated, attachments: updated.attachments ?? prev.attachments }
+        : prev,
+    );
+  }, []);
+
+  const handleToggleRead = useCallback(
+    async (row: MessageRow, shouldBeRead: boolean) => {
+      const numericId = Number(row.id);
+      const optimistic: MessageRow = { ...row, read: shouldBeRead };
+      applyUpdatedMessage(optimistic);
+
+      if (!Number.isFinite(numericId)) {
+        return;
+      }
+
+      try {
+        const dto = await updateMessageReadStatus(numericId, { read: shouldBeRead });
+        const mapped = mapToRow(dto);
+        const merged: MessageRow = {
+          ...mapped,
+          attachments: row.attachments,
+          hasAttachments: row.hasAttachments,
+        };
+        applyUpdatedMessage(merged);
+      } catch (error) {
+        applyUpdatedMessage(row);
+        const message =
+          error instanceof ApiError
+            ? error.message
+            : 'Nie udalo sie zaktualizowac statusu wiadomosci.';
+        toast.error(message);
+      }
+    },
+    [applyUpdatedMessage, mapToRow],
+  );
+
   const openMessage = (message: MessageRow) => {
     setSelectedMessage(message);
     setIsDialogOpen(true);
+    if (!message.read) {
+      void handleToggleRead(message, true);
+    }
   };
 
   const closeMessage = () => {
@@ -181,7 +230,7 @@ export function Messages() {
     {
       key: 'from',
       label: 'Od',
-      filter: { type: 'select', placeholder: 'Wybierz nadawcę', options: senderOptions },
+      filter: { type: 'select', placeholder: 'Wybierz nadawce', options: senderOptions },
     },
     {
       key: 'to',
@@ -302,7 +351,7 @@ export function Messages() {
         <DataTable
           data={localMessages}
           columns={columns}
-          searchPlaceholder="Szukaj wiadomości..."
+          searchPlaceholder="Szukaj wiadomosci..."
           exportFilename="wiadomosci"
           exportLimit={2000}
           bodyHeight="65vh"
@@ -316,7 +365,10 @@ export function Messages() {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => openMessage(message)}>
                   <Eye className="mr-2 h-4 w-4" />
-                  Otwórz
+                  Otworz
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleToggleRead(message, !message.read)}>
+                  {message.read ? 'Oznacz jako nieprzeczytana' : 'Oznacz jako przeczytana'}
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Reply className="mr-2 h-4 w-4" />
@@ -324,7 +376,7 @@ export function Messages() {
                 </DropdownMenuItem>
                 <DropdownMenuItem className="text-destructive">
                   <Trash className="mr-2 h-4 w-4" />
-                  Usuń
+                  Usun
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -368,7 +420,7 @@ export function Messages() {
                     <div className="space-y-2">
                       <Separator />
                       <div>
-                        <h4 className="mb-3">Załączniki ({selectedMessage.attachments.length})</h4>
+                        <h4 className="mb-3">Zalaczniki ({selectedMessage.attachments.length})</h4>
                         <div className="space-y-2">
                           {selectedMessage.attachments.map((attachment, index) => (
                             <div
@@ -411,13 +463,13 @@ export function Messages() {
         </DialogContent>
       </Dialog>
 
-      {/* Compose dialog - tworzenie nowej wiadomości */}
+      {/* Compose dialog - tworzenie nowej wiadomosci */}
       <Dialog open={isComposeOpen} onOpenChange={setIsComposeOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh]">
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold">Nowa wiadomość</h3>
-              <p className="text-sm text-muted-foreground">Uzupełnij pola i wyślij wiadomość</p>
+              <h3 className="text-lg font-semibold">Nowa wiadomosc</h3>
+              <p className="text-sm text-muted-foreground">Uzupelnij pola i wyslij wiadomosc</p>
             </div>
 
             <div className="grid grid-cols-1 gap-2">
@@ -426,7 +478,7 @@ export function Messages() {
                 className="input w-full"
                 value={composeSubject}
                 onChange={(e) => setComposeSubject(e.target.value)}
-                placeholder="Temat wiadomości"
+                placeholder="Temat wiadomosci"
               />
 
               <label className="text-sm">Do</label>
@@ -437,16 +489,16 @@ export function Messages() {
                 placeholder="Adresat (np. Jan Kowalski)"
               />
 
-              <label className="text-sm">Treść</label>
+              <label className="text-sm">Tresc</label>
               <textarea
                 className="textarea w-full h-40"
                 value={composeContent}
                 onChange={(e) => setComposeContent(e.target.value)}
-                placeholder="Treść wiadomości"
+                placeholder="Tresc wiadomosci"
               />
 
               <div>
-                <label className="text-sm">Załączniki</label>
+                <label className="text-sm">Zalaczniki</label>
                 <div className="flex items-center gap-2 mt-2">
                   <input
                     ref={fileInputRef}
@@ -469,7 +521,7 @@ export function Messages() {
                   <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
                     Dodaj pliki
                   </Button>
-                  <div className="text-sm text-muted-foreground">{composeAttachments.length} plików</div>
+                  <div className="text-sm text-muted-foreground">{composeAttachments.length} plikow</div>
                 </div>
 
                 {composeAttachments.length > 0 && (
@@ -481,7 +533,7 @@ export function Messages() {
                           <div className="text-xs text-muted-foreground">{att.size}</div>
                         </div>
                         <Button variant="ghost" size="sm" onClick={() => setComposeAttachments(prev => prev.filter((_, i) => i !== idx))}>
-                          Usuń
+                          Usun
                         </Button>
                       </div>
                     ))}

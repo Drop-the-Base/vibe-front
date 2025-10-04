@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
@@ -46,6 +47,17 @@ public class MessageService {
         message.setStatus(Optional.ofNullable(request.status()).orElse("sent"));
         message.setHasAttachments(Optional.ofNullable(request.hasAttachments()).orElse(false));
         message.setReplyToId(request.replyToId());
+        return repository.save(message);
+    }
+
+    public Message updateReadStatus(Long id, boolean read) {
+        var message = repository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Message not found: id=" + id));
+        if (read) {
+            message.setReadAt(OffsetDateTime.now());
+        } else {
+            message.setReadAt(null);
+        }
         return repository.save(message);
     }
 
