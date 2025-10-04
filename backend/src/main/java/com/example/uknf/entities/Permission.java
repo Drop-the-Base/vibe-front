@@ -6,8 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.Set;
-
 @Entity
 @Table(name = "permissions")
 @Getter
@@ -27,6 +25,4 @@ public class Permission {
     @Column(name = "description", length = 255)
     private String description;
 
-    @ManyToMany(mappedBy = "permissions")
-    private Set<com.example.uknf.entities.Role> roles;
 }
