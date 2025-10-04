@@ -1,5 +1,4 @@
-import React, { useMemo } from 'react';
-import { users } from '../../lib/mock-data';
+import React, { useMemo, useState, useEffect } from 'react';
 import { DataTable, Column } from '../../components/DataTable';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -12,8 +11,34 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
+import { userClient } from '../../features/users/services/user-client';
+import { mapUserDtoToUser } from '../../features/users/services/user-mapper';
+import type { User } from '../../features/users/types/user';
 
 export function Users() {
+  const [localUsers, setLocalUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // request using client so API_BASE_URL and proxy are honored
+        const data = await userClient.list('page=0&size=20');
+        // support HAL style (_embedded.users) or array
+        const items: any[] = data && (data as any)._embedded && (data as any)._embedded.users ? (data as any)._embedded.users : (Array.isArray(data) ? data : [data]);
+        const normalized: User[] = (items || []).map((dto: any) => mapUserDtoToUser(dto));
+        setLocalUsers(normalized as any[]);
+      } catch (err: any) {
+        setError(err.message || String(err));
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
   const getRoleLabel = (role: string) => {
     const labels: Record<string, string> = {
       admin: 'Administrator systemu',
@@ -41,33 +66,33 @@ export function Users() {
     () =>
       Array.from(
         new Set(
-          users
-            .map((user) => user.role)
-            .filter((role): role is string => Boolean(role)),
+          localUsers
+            .map((user: any) => user.role)
+            .filter((role: any): role is string => Boolean(role)),
         ),
-      ).map((role) => ({
+      ).map((role: string) => ({
         label: getRoleLabel(role),
         value: role,
       })),
-    [],
+    [localUsers],
   );
 
   const entityOptions = useMemo(
     () =>
       Array.from(
         new Set(
-          users
-            .map((user) => user.entity)
-            .filter((entity): entity is string => Boolean(entity)),
+          localUsers
+            .map((user: any) => user.entity)
+            .filter((entity: any): entity is string => Boolean(entity)),
         ),
-      ).map((entity) => ({
+      ).map((entity: string) => ({
         label: entity,
         value: entity,
       })),
-    [],
+    [localUsers],
   );
 
-  const columns: Column<typeof users[0]>[] = [
+  const columns: Column<any>[] = [
     {
       key: 'name',
       label: 'Imię i nazwisko',
@@ -121,7 +146,7 @@ export function Users() {
       key: 'createdAt',
       label: 'Data utworzenia',
       filter: { type: 'daterange', fromLabel: 'Od', toLabel: 'Do' },
-      render: (value) => formatDateTime(value),
+      render: (value) => (value ? formatDateTime(value) : '—'),
     },
   ];
 
@@ -142,21 +167,21 @@ export function Users() {
 
       <div className="flex gap-2">
         <Button variant="outline" size="sm">
-          Wszyscy ({users.length})
+          Wszyscy ({localUsers.length})
         </Button>
         <Button variant="outline" size="sm">
-          Pracownicy UKNF ({users.filter(u => u.role === 'internal' || u.role === 'admin').length})
+          Pracownicy UKNF ({localUsers.filter((u: any) => u.role === 'internal' || u.role === 'admin').length})
         </Button>
         <Button variant="outline" size="sm">
-          Użytkownicy zewnętrzni ({users.filter(u => u.role === 'external_admin' || u.role === 'external_user').length})
+          Użytkownicy zewnętrzni ({localUsers.filter((u: any) => u.role === 'external_admin' || u.role === 'external_user').length})
         </Button>
         <Button variant="outline" size="sm">
-          Aktywni ({users.filter(u => u.active).length})
+          Aktywni ({localUsers.filter((u: any) => u.active).length})
         </Button>
       </div>
 
       <DataTable
-        data={users}
+        data={localUsers}
         columns={columns}
         searchPlaceholder="Szukaj użytkowników..."
         exportFilename="uzytkownicy"
