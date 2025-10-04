@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { libraryFiles } from '../lib/mock-data';
 import { DataTable, Column } from '../components/DataTable';
 import { Badge } from '../components/ui/badge';
@@ -35,10 +35,71 @@ export function Library() {
     return labels[level] || level;
   };
 
+  const typeOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          libraryFiles
+            .map((file) => file.type)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ).map((value) => ({
+        label: value,
+        value,
+      })),
+    [],
+  );
+
+  const categoryOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          libraryFiles
+            .map((file) => file.category)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ).map((value) => ({
+        label: value,
+        value,
+      })),
+    [],
+  );
+
+  const authorOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          libraryFiles
+            .map((file) => file.uploadedBy)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ).map((value) => ({
+        label: value,
+        value,
+      })),
+    [],
+  );
+
+  const accessOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          libraryFiles
+            .map((file) => file.accessLevel)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ).map((value) => ({
+        label: getAccessLevelLabel(value),
+        value,
+      })),
+    [],
+  );
+
   const columns: Column<typeof libraryFiles[0]>[] = [
     {
       key: 'name',
       label: 'Nazwa pliku',
+      filter: { type: 'text', placeholder: 'Filtruj nazwę' },
       render: (value, item) => (
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-muted-foreground" />
@@ -49,6 +110,7 @@ export function Library() {
     {
       key: 'type',
       label: 'Typ',
+      filter: { type: 'select', placeholder: 'Wybierz typ', options: typeOptions },
       render: (value) => (
         <Badge variant="outline">{value}</Badge>
       ),
@@ -56,27 +118,33 @@ export function Library() {
     {
       key: 'category',
       label: 'Kategoria',
+      filter: { type: 'select', placeholder: 'Wybierz kategorię', options: categoryOptions },
     },
     {
       key: 'version',
       label: 'Wersja',
+      filter: { type: 'text', placeholder: 'Filtruj wersję' },
     },
     {
       key: 'size',
       label: 'Rozmiar',
+      filter: { type: 'text', placeholder: 'Filtruj rozmiar' },
     },
     {
       key: 'uploadedBy',
       label: 'Dodane przez',
+      filter: { type: 'select', placeholder: 'Wybierz autora', options: authorOptions },
     },
     {
       key: 'uploadedDate',
       label: 'Data dodania',
+      filter: { type: 'daterange', fromLabel: 'Od', toLabel: 'Do' },
       render: (value) => formatDateTime(value),
     },
     {
       key: 'accessLevel',
       label: 'Poziom dostępu',
+      filter: { type: 'select', placeholder: 'Poziom dostępu', options: accessOptions },
       render: (value) => (
         <Badge variant={getAccessLevelVariant(value)}>
           {getAccessLevelLabel(value)}
@@ -86,6 +154,7 @@ export function Library() {
     {
       key: 'tags',
       label: 'Tagi',
+      filter: { type: 'text', placeholder: 'Filtruj tagi' },
       render: (value: string[]) => (
         <div className="flex gap-1 flex-wrap">
           {value.slice(0, 2).map((tag, i) => (
@@ -138,6 +207,8 @@ export function Library() {
         columns={columns}
         searchPlaceholder="Szukaj plików po nazwie, kategorii lub tagach..."
         exportFilename="biblioteka"
+        exportLimit={2000}
+        bodyHeight="65vh"
         actions={(file) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

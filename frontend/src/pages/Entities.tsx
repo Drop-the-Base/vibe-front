@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 // data now loaded from backend /entities
 import { DataTable, Column } from '../components/DataTable';
 import { Badge } from '../components/ui/badge';
@@ -93,10 +93,56 @@ export function Entities() {
     return labels[status] || status;
   };
 
+  const statusOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          localEntities
+            .map((entity) => entity.status)
+            .filter((status): status is string => Boolean(status)),
+        ),
+      ).map((status) => ({
+        label: getStatusLabel(status),
+        value: status,
+      })),
+    [localEntities],
+  );
+
+  const typeOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          localEntities
+            .map((entity) => entity.type)
+            .filter((type): type is string => Boolean(type)),
+        ),
+      ).map((type) => ({
+        label: type,
+        value: type,
+      })),
+    [localEntities],
+  );
+
+  const categoryOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          localEntities
+            .map((entity) => entity.category)
+            .filter((category): category is string => Boolean(category)),
+        ),
+      ).map((category) => ({
+        label: category,
+        value: category,
+      })),
+    [localEntities],
+  );
+
   const columns: Column<any>[] = [
     {
       key: 'name',
       label: 'Nazwa podmiotu',
+      filter: { type: 'text', placeholder: 'Filtruj nazwę' },
       render: (value) => (
         <div className="flex items-center gap-2">
           <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -107,34 +153,42 @@ export function Entities() {
     {
       key: 'entity_id',
       label: 'Entity ID',
+      filter: { type: 'text', placeholder: 'Filtruj entity ID' },
     },
     {
       key: 'uknf_code',
       label: 'Kod UKNF',
+      filter: { type: 'text', placeholder: 'Filtruj kod UKNF' },
     },
     {
       key: 'id',
       label: 'ID',
+      filter: { type: 'text', placeholder: 'Filtruj ID' },
     },
     {
       key: 'nip',
       label: 'NIP',
+      filter: { type: 'text', placeholder: 'Filtruj NIP' },
     },
     {
       key: 'krs',
       label: 'KRS',
+      filter: { type: 'text', placeholder: 'Filtruj KRS' },
     },
     {
       key: 'lei',
       label: 'LEI',
+      filter: { type: 'text', placeholder: 'Filtruj LEI' },
     },
     {
       key: 'type',
       label: 'Typ podmiotu',
+      filter: { type: 'select', placeholder: 'Wybierz typ', options: typeOptions },
     },
     {
       key: 'status',
       label: 'Status',
+      filter: { type: 'select', placeholder: 'Wybierz status', options: statusOptions },
       render: (value) => (
         <Badge variant={getStatusVariant(value)}>
           {getStatusLabel(value)}
@@ -144,56 +198,76 @@ export function Entities() {
     {
       key: 'category',
       label: 'Kategoria',
+      filter: { type: 'select', placeholder: 'Wybierz kategorię', options: categoryOptions },
     },
     {
       key: 'cross_border',
       label: 'Transgraniczny',
+      filter: {
+        type: 'select',
+        placeholder: 'Wybierz opcję',
+        options: [
+          { label: 'Tak', value: 'true' },
+          { label: 'Nie', value: 'false' },
+        ],
+      },
       render: (value) => (value ? 'Tak' : 'Nie'),
     },
     {
       key: 'contactPerson',
       label: 'Osoba kontaktowa',
+      filter: { type: 'text', placeholder: 'Filtruj osobę' },
     },
     {
       key: 'street',
       label: 'Ulica',
+      filter: { type: 'text', placeholder: 'Filtruj ulicę' },
     },
     {
       key: 'building_number',
       label: 'Nr budynku',
+      filter: { type: 'text', placeholder: 'Filtruj nr budynku' },
     },
     {
       key: 'apartment_number',
       label: 'Nr lokalu',
+      filter: { type: 'text', placeholder: 'Filtruj nr lokalu' },
     },
     {
       key: 'postal_code',
       label: 'Kod pocztowy',
+      filter: { type: 'text', placeholder: 'Filtruj kod' },
     },
     {
       key: 'city',
       label: 'Miasto',
+      filter: { type: 'text', placeholder: 'Filtruj miasto' },
     },
     {
       key: 'email',
       label: 'Email',
+      filter: { type: 'text', placeholder: 'Filtruj email' },
     },
     {
       key: 'phone',
       label: 'Telefon',
+      filter: { type: 'text', placeholder: 'Filtruj telefon' },
     },
     {
       key: 'registry_number',
       label: 'Nr rejestru UKNF',
+      filter: { type: 'text', placeholder: 'Filtruj nr rejestru' },
     },
     {
       key: 'created_at',
       label: 'Utworzono',
+      filter: { type: 'daterange', fromLabel: 'Od', toLabel: 'Do' },
       render: (value) => value ? new Date(value).toLocaleString() : '',
     },
     {
       key: 'statusRaw',
       label: 'Surowy status',
+      filter: { type: 'text', placeholder: 'Filtruj status' },
       render: (_v, item) => item.status,
     }
   ];
@@ -236,6 +310,8 @@ export function Entities() {
         columns={columns}
         searchPlaceholder="Szukaj podmiotów..."
         exportFilename="podmioty"
+        exportLimit={5000}
+        bodyHeight="70vh"
         actions={(entity) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { messages } from '../lib/mock-data';
 import { currentUser } from '../lib/mock-data';
 import { DataTable, Column } from '../components/DataTable';
@@ -49,6 +49,51 @@ export function Messages() {
     setTimeout(() => setSelectedMessage(null), 200);
   };
 
+  const senderOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          localMessages
+            .map((message) => message.from)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ).map((value) => ({
+        label: value,
+        value,
+      })),
+    [localMessages],
+  );
+
+  const recipientOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          localMessages
+            .map((message) => message.to)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ).map((value) => ({
+        label: value,
+        value,
+      })),
+    [localMessages],
+  );
+
+  const entityOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          localMessages
+            .map((message) => message.entityName)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ).map((value) => ({
+        label: value,
+        value,
+      })),
+    [localMessages],
+  );
+
   const columns: Column<typeof messages[0]>[] = [
     {
       key: 'read',
@@ -63,6 +108,7 @@ export function Messages() {
     {
       key: 'subject',
       label: 'Temat',
+      filter: { type: 'text', placeholder: 'Filtruj temat' },
       render: (value, item) => (
         <button
           onClick={() => openMessage(item)}
@@ -76,18 +122,22 @@ export function Messages() {
     {
       key: 'from',
       label: 'Od',
+      filter: { type: 'select', placeholder: 'Wybierz nadawcę', options: senderOptions },
     },
     {
       key: 'to',
       label: 'Do',
+      filter: { type: 'select', placeholder: 'Wybierz adresata', options: recipientOptions },
     },
     {
       key: 'entityName',
       label: 'Podmiot',
+      filter: { type: 'select', placeholder: 'Wybierz podmiot', options: entityOptions },
     },
     {
       key: 'date',
       label: 'Data',
+      filter: { type: 'daterange', fromLabel: 'Od', toLabel: 'Do' },
       render: (value) => formatDateTime(value),
     },
   ];
@@ -125,6 +175,8 @@ export function Messages() {
           columns={columns}
           searchPlaceholder="Szukaj wiadomości..."
           exportFilename="wiadomosci"
+          exportLimit={2000}
+          bodyHeight="65vh"
           actions={(message) => (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

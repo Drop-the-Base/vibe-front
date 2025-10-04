@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { users } from '../../lib/mock-data';
 import { DataTable, Column } from '../../components/DataTable';
 import { Badge } from '../../components/ui/badge';
@@ -37,18 +37,51 @@ export function Users() {
     }
   };
 
+  const roleOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          users
+            .map((user) => user.role)
+            .filter((role): role is string => Boolean(role)),
+        ),
+      ).map((role) => ({
+        label: getRoleLabel(role),
+        value: role,
+      })),
+    [],
+  );
+
+  const entityOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          users
+            .map((user) => user.entity)
+            .filter((entity): entity is string => Boolean(entity)),
+        ),
+      ).map((entity) => ({
+        label: entity,
+        value: entity,
+      })),
+    [],
+  );
+
   const columns: Column<typeof users[0]>[] = [
     {
       key: 'name',
       label: 'Imię i nazwisko',
+      filter: { type: 'text', placeholder: 'Filtruj nazwisko' },
     },
     {
       key: 'email',
       label: 'Email',
+      filter: { type: 'text', placeholder: 'Filtruj email' },
     },
     {
       key: 'role',
       label: 'Rola',
+      filter: { type: 'select', placeholder: 'Wybierz rolę', options: roleOptions },
       render: (value) => (
         <Badge variant={getRoleVariant(value)}>
           {getRoleLabel(value)}
@@ -58,11 +91,20 @@ export function Users() {
     {
       key: 'entity',
       label: 'Podmiot',
+      filter: { type: 'select', placeholder: 'Wybierz podmiot', options: entityOptions },
       render: (value) => value || '-',
     },
     {
       key: 'active',
       label: 'Status',
+      filter: {
+        type: 'select',
+        placeholder: 'Wybierz status',
+        options: [
+          { label: 'Aktywny', value: 'true' },
+          { label: 'Nieaktywny', value: 'false' },
+        ],
+      },
       render: (value) => (
         <Badge variant={value ? 'default' : 'secondary'}>
           {value ? 'Aktywny' : 'Nieaktywny'}
@@ -72,11 +114,13 @@ export function Users() {
     {
       key: 'lastLogin',
       label: 'Ostatnie logowanie',
+      filter: { type: 'daterange', fromLabel: 'Od', toLabel: 'Do' },
       render: (value) => (value ? formatDateTime(value) : 'Nigdy'),
     },
     {
       key: 'createdAt',
       label: 'Data utworzenia',
+      filter: { type: 'daterange', fromLabel: 'Od', toLabel: 'Do' },
       render: (value) => formatDateTime(value),
     },
   ];
@@ -116,6 +160,7 @@ export function Users() {
         columns={columns}
         searchPlaceholder="Szukaj użytkowników..."
         exportFilename="uzytkownicy"
+        exportLimit={2000}
         actions={(user) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
