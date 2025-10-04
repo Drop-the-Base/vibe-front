@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { accessRequests } from '../../lib/mock-data';
 import { DataTable, Column } from '../../components/DataTable';
 import { Badge } from '../../components/ui/badge';
@@ -35,30 +35,81 @@ export function AccessRequests() {
     return labels[status] || status;
   };
 
+  const statusOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          accessRequests
+            .map((request) => request.status)
+            .filter((status): status is string => Boolean(status)),
+        ),
+      ).map((status) => ({
+        label: getStatusLabel(status),
+        value: status,
+      })),
+    [],
+  );
+
+  const roleOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          accessRequests
+            .map((request) => request.requestedRole)
+            .filter((role): role is string => Boolean(role)),
+        ),
+      ).map((role) => ({
+        label: role,
+        value: role,
+      })),
+    [],
+  );
+
+  const reviewerOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          accessRequests
+            .map((request) => request.reviewedBy)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ).map((value) => ({
+        label: value,
+        value,
+      })),
+    [],
+  );
+
   const columns: Column<typeof accessRequests[0]>[] = [
     {
       key: 'id',
       label: 'ID',
+      filter: { type: 'text', placeholder: 'Filtruj ID' },
     },
     {
       key: 'userName',
       label: 'Użytkownik',
+      filter: { type: 'text', placeholder: 'Filtruj użytkownika' },
     },
     {
       key: 'email',
       label: 'Email',
+      filter: { type: 'text', placeholder: 'Filtruj email' },
     },
     {
       key: 'entityName',
       label: 'Podmiot',
+      filter: { type: 'text', placeholder: 'Filtruj podmiot' },
     },
     {
       key: 'requestedRole',
       label: 'Żądana rola',
+      filter: { type: 'select', placeholder: 'Wybierz rolę', options: roleOptions },
     },
     {
       key: 'status',
       label: 'Status',
+      filter: { type: 'select', placeholder: 'Wybierz status', options: statusOptions },
       render: (value) => (
         <Badge variant={getStatusVariant(value)}>
           {getStatusLabel(value)}
@@ -68,16 +119,19 @@ export function AccessRequests() {
     {
       key: 'requestDate',
       label: 'Data wniosku',
+      filter: { type: 'daterange', fromLabel: 'Od', toLabel: 'Do' },
       render: (value) => formatDateTime(value),
     },
     {
       key: 'reviewedBy',
       label: 'Rozpatrzony przez',
+      filter: { type: 'select', placeholder: 'Wybierz osobę', options: reviewerOptions },
       render: (value) => value || '-',
     },
     {
       key: 'reviewDate',
       label: 'Data rozpatrzenia',
+      filter: { type: 'daterange', fromLabel: 'Od', toLabel: 'Do' },
       render: (value) => (value ? formatDateTime(value) : '-'),
     },
   ];
@@ -113,6 +167,7 @@ export function AccessRequests() {
         columns={columns}
         searchPlaceholder="Szukaj wniosków..."
         exportFilename="wnioski_o_dostep"
+        exportLimit={2000}
         actions={(request) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
