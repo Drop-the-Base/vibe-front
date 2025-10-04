@@ -4,8 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.Set;
-
 @Entity
 @Table(name = "faq_categories")
 @Getter
@@ -18,6 +16,7 @@ public class FaqCategory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "category_id")
+    @JsonIgnore
     private Integer id;
 
     @Column(name = "name", nullable = false, unique = true, length = 100)
@@ -25,12 +24,4 @@ public class FaqCategory {
 
     @Column(name = "description", length = 255)
     private String description;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_category_id")
-    private FaqCategory parent;
-
-    @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY)
-    @JsonIgnore
-    private Set<FaqCategory> children;
 }
