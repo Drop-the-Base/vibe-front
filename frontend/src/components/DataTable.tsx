@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { Search, Download, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
-import { exportToCSV, exportToJSON } from '../lib/utils';
+import { exportToJSON, exportToTXT, exportToXLSX } from '../shared/export/exporters';
 
 export interface Column<T> {
   key: string;
@@ -104,19 +104,31 @@ export function DataTable<T extends Record<string, any>>({
     }
   };
 
-  const handleExport = (format: 'csv' | 'json' | 'xlsx') => {
-    const exportData = sortedData.map(item => {
-      const row: any = {};
-      columns.forEach(col => {
-        row[col.label] = item[col.key];
+  const handleExport = (format: 'xlsx' | 'txt' | 'json') => {
+    const headers = columns.map((column) => column.label);
+    const matrix = sortedData.map((item) =>
+      columns.map((column) => item[column.key]),
+    );
+    const records = sortedData.map((item) => {
+      const row: Record<string, unknown> = {};
+      columns.forEach((column) => {
+        row[column.label] = item[column.key];
       });
       return row;
     });
 
-    if (format === 'csv' || format === 'xlsx') {
-      exportToCSV(exportData, `${exportFilename}.csv`);
-    } else {
-      exportToJSON(exportData, `${exportFilename}.json`);
+    switch (format) {
+      case 'xlsx':
+        exportToXLSX(headers, matrix, exportFilename);
+        break;
+      case 'txt':
+        exportToTXT(headers, matrix, exportFilename);
+        break;
+      case 'json':
+        exportToJSON(records, exportFilename);
+        break;
+      default:
+        break;
     }
   };
 
@@ -159,11 +171,11 @@ export function DataTable<T extends Record<string, any>>({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleExport('csv')}>
-                Eksportuj do CSV
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport('xlsx')}>
                 Eksportuj do XLSX
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('txt')}>
+                Eksportuj do TXT
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport('json')}>
                 Eksportuj do JSON
