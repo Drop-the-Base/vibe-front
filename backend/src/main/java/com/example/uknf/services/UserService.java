@@ -1,8 +1,10 @@
 package com.example.uknf.services;
 
-import com.example.uknf.entities.TestEntity;
+import com.example.uknf.entities.User;
 import com.example.uknf.exceptions.NotFoundException;
-import com.example.uknf.repositories.TestRepository;
+import com.example.uknf.repositories.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,35 +13,38 @@ import java.util.List;
 @Service
 @Transactional
 public class UserService {
-    private final TestRepository repo;
+    @Autowired
+    private UserRepository userRepository;
 
-    public UserService(TestRepository repo) {
-        this.repo = repo;
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    // Create
+    public User createUser(User user) {
+        return userRepository.save(user);
     }
 
-    @Transactional(readOnly = true)
-    public List<TestEntity> findAll() {
-        return repo.findAll();
+    // Read all
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
     }
 
-    @Transactional(readOnly = true)
-    public TestEntity findById(Integer id) {
-        return repo.findById(id).orElseThrow(() -> new NotFoundException(id));
+    // Read by ID
+    public User getUserById(Integer id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException(id));
     }
 
-    public TestEntity create(String name) {
-        var e = new TestEntity(name);
-        return repo.save(e);
+    // Update
+    public User updateUser(Integer id, User updatedUser) throws com.fasterxml.jackson.databind.JsonMappingException {
+        User existingUser = getUserById(id);
+        objectMapper.updateValue(existingUser, updatedUser);
+        return userRepository.save(existingUser);
     }
 
-    public TestEntity update(Integer id, String name) {
-        var e = findById(id);
-        e.setName(name);
-        return repo.save(e);
-    }
-
-    public void delete(Integer id) {
-        if (!repo.existsById(id)) throw new NotFoundException(id);
-        repo.deleteById(id);
+    // Delete
+    public void deleteUser(Integer id) {
+        User user = getUserById(id);
+        userRepository.delete(user);
     }
 }
