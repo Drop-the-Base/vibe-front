@@ -1,5 +1,6 @@
-package com.example.uknf.messages;
+package com.example.uknf.repositories;
 
+import com.example.uknf.entities.Message;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 

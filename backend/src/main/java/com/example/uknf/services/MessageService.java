@@ -1,6 +1,8 @@
-package com.example.uknf.messages;
+package com.example.uknf.services;
 
-import com.example.uknf.messages.dto.MessageCreateRequest;
+import com.example.uknf.entities.Message;
+import com.example.uknf.repositories.MessageRepository;
+import com.example.uknf.dtos.messages.MessageCreateRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

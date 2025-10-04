@@ -1,4 +1,4 @@
-package com.example.uknf.messages;
+package com.example.uknf.entities;
 
 import jakarta.persistence.*;
 import lombok.Getter;

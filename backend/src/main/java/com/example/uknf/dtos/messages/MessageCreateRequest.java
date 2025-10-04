@@ -1,4 +1,4 @@
-package com.example.uknf.messages.dto;
+package com.example.uknf.dtos.messages;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

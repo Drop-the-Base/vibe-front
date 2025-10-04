@@ -1,6 +1,6 @@
-package com.example.uknf.messages.dto;
+package com.example.uknf.dtos.messages;
 
-import com.example.uknf.messages.Message;
+import com.example.uknf.entities.Message;
 
 import java.util.UUID;
 

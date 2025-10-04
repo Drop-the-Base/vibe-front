@@ -1,8 +1,8 @@
 package com.example.uknf.controllers;
 
-import com.example.uknf.messages.MessageService;
-import com.example.uknf.messages.dto.MessageCreateRequest;
-import com.example.uknf.messages.dto.MessageResponse;
+import com.example.uknf.services.MessageService;
+import com.example.uknf.dtos.messages.MessageCreateRequest;
+import com.example.uknf.dtos.messages.MessageResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
