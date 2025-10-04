@@ -532,19 +532,24 @@ export function Entities() {
       />
 
       <Dialog open={isCreateOpen} onOpenChange={handleDialogChange}>
-        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Nowy podmiot</DialogTitle>
-            <DialogDescription>
-              Uzupełnij dane podmiotu, aby dodać go do rejestru.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-hidden sm:max-w-3xl">
+          <div className="flex h-full flex-col">
+            <DialogHeader className="flex-shrink-0 space-y-2">
+              <DialogTitle>Nowy podmiot</DialogTitle>
+              <DialogDescription>
+                Uzupełnij dane podmiotu, aby dodać go do rejestru.
+              </DialogDescription>
+            </DialogHeader>
 
-          <form className="space-y-6" onSubmit={handleCreateSubmit}>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="grid gap-1.5">
-                <Label htmlFor="entity-name">Nazwa</Label>
-                <Input
+            <form
+              className="flex flex-1 flex-col overflow-hidden"
+              onSubmit={handleCreateSubmit}
+            >
+              <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="entity-name">Nazwa</Label>
+                    <Input
                   id="entity-name"
                   value={createForm.name}
                   onChange={handleStringChange('name')}
@@ -725,47 +730,49 @@ export function Entities() {
                   placeholder="np. Warszawa"
                 />
               </div>
-            </div>
-
-            <div className="rounded-md border p-4">
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="entity-cross-border"
-                  checked={createForm.crossBorder}
-                  onCheckedChange={(checked) =>
-                    setCreateForm((prev) => ({
-                      ...prev,
-                      crossBorder: checked === true,
-                    }))
-                  }
-                />
-                <div className="space-y-1">
-                  <Label htmlFor="entity-cross-border" className="leading-tight">
-                    Transgraniczny
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Zaznacz, jeśli podmiot prowadzi działalność transgraniczną.
-                  </p>
                 </div>
+
+                <div className="rounded-md border p-4">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="entity-cross-border"
+                      checked={createForm.crossBorder}
+                      onCheckedChange={(checked) =>
+                        setCreateForm((prev) => ({
+                          ...prev,
+                          crossBorder: checked === true,
+                        }))
+                      }
+                    />
+                    <div className="space-y-1">
+                      <Label htmlFor="entity-cross-border" className="leading-tight">
+                        Transgraniczny
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Zaznacz, jeśli podmiot prowadzi działalność transgraniczną.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {createError && <p className="text-sm text-destructive">{createError}</p>}
               </div>
-            </div>
 
-            {createError && <p className="text-sm text-destructive">{createError}</p>}
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleDialogChange(false)}
-                disabled={createLoading}
-              >
-                Anuluj
-              </Button>
-              <Button type="submit" disabled={createLoading}>
-                {createLoading ? 'Tworzenie...' : 'Utwórz'}
-              </Button>
-            </DialogFooter>
-          </form>
+              <DialogFooter className="flex-shrink-0 gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleDialogChange(false)}
+                  disabled={createLoading}
+                >
+                  Anuluj
+                </Button>
+                <Button type="submit" disabled={createLoading}>
+                  {createLoading ? 'Tworzenie...' : 'Utwórz'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
