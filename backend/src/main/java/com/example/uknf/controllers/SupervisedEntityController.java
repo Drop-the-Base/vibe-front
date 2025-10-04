@@ -27,4 +27,16 @@ public class SupervisedEntityController {
         service.create(req);
         return ResponseEntity.ok().build();
     }
+
+    @PutMapping(value = "/{id}", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<?> update(@PathVariable Integer id, @Valid @RequestBody SupervisedEntityCreateRequest req) {
+        service.update(id, req);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> delete(@PathVariable Integer id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 }

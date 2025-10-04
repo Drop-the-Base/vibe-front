@@ -434,7 +434,16 @@ export function Messages() {
                 <DropdownMenuItem onClick={() => handleToggleRead(message, !message.read)}>
                   {message.read ? 'Oznacz jako nieprzeczytana' : 'Oznacz jako przeczytana'}
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  if (!message) return;
+                  const subject = message.subject?.trim() ?? '';
+                  const prefix = subject.toLowerCase().startsWith('re:') ? '' : 'Re: ';
+                  setComposeSubject(prefix + subject);
+                  setComposeTo(message.from ?? '');
+                  setComposeContent('');
+                  setComposeAttachments([]);
+                  setIsComposeOpen(true);
+                }}>
                   <Reply className="mr-2 h-4 w-4" />
                   Odpowiedz
                 </DropdownMenuItem>
@@ -645,3 +654,6 @@ function formatBytes(bytes: number) {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
+
+
+
