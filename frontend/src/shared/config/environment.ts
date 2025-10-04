@@ -1,6 +1,7 @@
 const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '');
 
-const rawApiBase = (import.meta as any)?.env?.VITE_API_URL ?? 'http://localhost:8080';
+const envBase = (import.meta as any)?.env?.VITE_API_URL;
+const rawApiBase = envBase && envBase.trim().length > 0 ? envBase : 'http://localhost:8080';
 
 export const API_BASE_URL = normalizeBaseUrl(rawApiBase);
 

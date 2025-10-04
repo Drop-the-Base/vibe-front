@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { messages } from '../lib/mock-data';
-import { currentUser } from '../lib/mock-data';
 import { DataTable, Column } from '../components/DataTable';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -21,10 +20,15 @@ import {
 } from '../components/ui/dialog';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Separator } from '../components/ui/separator';
+import { useAuth } from '../features/auth';
+import { createMessage } from '../shared/api/messages';
+import { ApiError } from '../shared/api/api-client';
+import { toast } from 'sonner@2.0.3';
 
 type MessageType = typeof messages[0];
 
 export function Messages() {
+  const { user, currentEntity } = useAuth();
   const [selectedMessage, setSelectedMessage] = useState<MessageType | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -33,6 +37,7 @@ export function Messages() {
 
   // compose (nowa wiadomość)
   const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [composeSubject, setComposeSubject] = useState('');
   const [composeTo, setComposeTo] = useState('');
   const [composeContent, setComposeContent] = useState('');
@@ -91,6 +96,66 @@ export function Messages() {
       render: (value) => formatDateTime(value),
     },
   ];
+
+  const handleSend = async () => {
+    if (!composeSubject.trim() || !composeTo.trim() || !composeContent.trim()) {
+      toast.error('Wypełnij temat, adresata i treść wiadomości.');
+      return;
+    }
+
+    if (!user) {
+      toast.error('Brak uwierzytelnionego użytkownika.');
+      return;
+    }
+
+    const senderType = user.role === 'internal' || user.role === 'admin' ? 'internal' : 'external';
+    const recipientType = senderType === 'internal' ? 'external' : 'internal';
+    const attachments = composeAttachments.map((att) => ({ ...att }));
+
+    try {
+      setIsSending(true);
+      const created = await createMessage({
+        subject: composeSubject.trim(),
+        content: composeContent.trim(),
+        sender: user.name || user.email || 'UKNF',
+        recipient: composeTo.trim(),
+        senderRole: user.role,
+        senderType,
+        recipientType,
+        entityRef: currentEntity?.id,
+        status: 'sent',
+        direction: senderType === 'internal' ? 'outbound' : 'inbound',
+        hasAttachments: attachments.length > 0,
+      });
+
+      const newMessage: MessageType = {
+        id: created.id != null ? created.id.toString() : 'tmp-' + Date.now().toString(),
+        subject: created.subject,
+        from: created.sender,
+        to: created.recipient,
+        entityName: created.entityRef ?? created.recipient,
+        date: created.createdAt ?? new Date().toISOString(),
+        read: Boolean(created.readAt),
+        hasAttachments: created.hasAttachments || attachments.length > 0,
+        content: created.content,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      };
+
+      setLocalMessages((prev) => [newMessage, ...prev]);
+      toast.success('Wiadomość została wysłana.');
+      setIsComposeOpen(false);
+      setComposeSubject('');
+      setComposeTo('');
+      setComposeContent('');
+      setComposeAttachments([]);
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : 'Nie udało się wysłać wiadomości.';
+      toast.error(message);
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   return (
     <>
@@ -317,35 +382,8 @@ export function Messages() {
               }}>
                 Anuluj
               </Button>
-              <Button onClick={() => {
-                // basic validation
-                if (!composeSubject.trim() || !composeTo.trim() || !composeContent.trim()) {
-                  // prosty alert - można zastąpić sonner/notification
-                  alert('Wypełnij temat, adresata i treść wiadomości.');
-                  return;
-                }
-
-                // wygeneruj id
-                const newId = `MSG-${String(localMessages.length + 1).padStart(3, '0')}`;
-                const newMsg: MessageType = {
-                  id: newId,
-                  subject: composeSubject,
-                  from: currentUser.name,
-                  to: composeTo,
-                  entityName: composeTo,
-                  date: new Date().toISOString(),
-                  read: false,
-                  hasAttachments: composeAttachments.length > 0,
-                  content: composeContent,
-                  attachments: composeAttachments.length > 0 ? composeAttachments : undefined,
-                };
-
-                setLocalMessages(prev => [newMsg, ...prev]);
-                // close and clear
-                setIsComposeOpen(false);
-                setComposeSubject(''); setComposeTo(''); setComposeContent(''); setComposeAttachments([]);
-              }}>
-                Wyślij
+              <Button onClick={handleSend} disabled={isSending}>
+                {isSending ? 'Wysyłanie...' : 'Wyślij'}
               </Button>
             </div>
           </div>
