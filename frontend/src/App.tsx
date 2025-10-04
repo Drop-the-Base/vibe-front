@@ -1,5 +1,5 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './lib/auth-context';
+import { AuthProvider, useAuth } from './features/auth';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { Reports } from './pages/Reports';
@@ -13,8 +13,8 @@ import { Users } from './pages/admin/Users';
 import { AccessRequests } from './pages/admin/AccessRequests';
 import { Roles } from './pages/admin/Roles';
 import { PasswordPolicy } from './pages/admin/PasswordPolicy';
-import { Login } from './pages/Login';
-import { Register } from './pages/Register';
+import { Login } from './features/auth/routes/Login';
+import { Register } from './features/auth/routes/Register';
 import { Toaster } from './components/ui/sonner';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {

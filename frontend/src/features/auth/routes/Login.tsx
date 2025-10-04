@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../lib/auth-context';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Building2, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '../components/ui/alert';
+import { AlertCircle, Building2 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
+
+import { useAuth } from '..';
+import { Alert, AlertDescription } from '../../../components/ui/alert';
+import { Button } from '../../../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
 
 export function Login() {
   const navigate = useNavigate();
@@ -17,18 +18,19 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
       await login(email, password);
       toast.success('Zalogowano pomyślnie');
       navigate('/');
-    } catch (error: any) {
-      setError(error.message || 'Nieprawidłowy login lub hasło');
-      toast.error(error.message || 'Nieprawidłowy login lub hasło');
+    } catch (caughtError: unknown) {
+      const message = caughtError instanceof Error ? caughtError.message : 'Nieprawidłowy login lub hasło';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -54,7 +56,7 @@ export function Login() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Login / Email</Label>
               <Input
@@ -62,7 +64,7 @@ export function Login() {
                 type="text"
                 placeholder="kowalski"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 required
               />
             </div>
@@ -72,7 +74,7 @@ export function Login() {
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(event) => setPassword(event.target.value)}
                 required
               />
             </div>
@@ -87,9 +89,9 @@ export function Login() {
             </Button>
             <div className="text-sm text-muted-foreground">
               Nie masz konta?{' '}
-              <Button 
-                variant="link" 
-                className="p-0 h-auto" 
+              <Button
+                variant="link"
+                className="p-0 h-auto"
                 onClick={() => navigate('/register')}
               >
                 Zarejestruj się

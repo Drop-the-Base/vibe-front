@@ -1,18 +1,8 @@
 // Mock data dla demo platformy komunikacyjnej UKNF
 
-export type UserRole = 'admin' | 'internal' | 'external_admin' | 'external_user';
+import type { User, UserRole } from '../features/auth/types/user';
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  entity?: string;
-  entityId?: string;
-  active: boolean;
-  lastLogin?: string;
-  createdAt: string;
-}
+export type { User, UserRole };
 
 export interface Entity {
   id: string;

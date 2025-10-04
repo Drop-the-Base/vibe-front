@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../lib/auth-context';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Building2, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '../components/ui/alert';
+import { AlertCircle, Building2 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
+
+import { useAuth } from '..';
+import { Alert, AlertDescription } from '../../../components/ui/alert';
+import { Button } from '../../../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
 
 export function Register() {
   const navigate = useNavigate();
@@ -19,12 +20,11 @@ export function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLoading(true);
     setError('');
 
-    // Walidacja
     if (password !== confirmPassword) {
       setError('Hasła nie są identyczne');
       setLoading(false);
@@ -36,14 +36,15 @@ export function Register() {
       setLoading(false);
       return;
     }
-    
+
     try {
       await register(name, email, password);
       toast.success('Konto zostało utworzone. Możesz się teraz zalogować.');
       navigate('/login');
-    } catch (error: any) {
-      setError(error.message || 'Wystąpił błąd podczas rejestracji');
-      toast.error(error.message || 'Wystąpił błąd podczas rejestracji');
+    } catch (caughtError: unknown) {
+      const message = caughtError instanceof Error ? caughtError.message : 'Wystąpił błąd podczas rejestracji';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -69,7 +70,7 @@ export function Register() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="name">Imię i nazwisko</Label>
               <Input
@@ -77,11 +78,11 @@ export function Register() {
                 type="text"
                 placeholder="Jan Kowalski"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(event) => setName(event.target.value)}
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -89,35 +90,35 @@ export function Register() {
                 type="email"
                 placeholder="jan.kowalski@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">Hasło</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(event) => setPassword(event.target.value)}
                 required
                 minLength={6}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Potwierdź hasło</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(event) => setConfirmPassword(event.target.value)}
                 required
                 minLength={6}
               />
             </div>
-            
+
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Rejestrowanie...' : 'Zarejestruj się'}
             </Button>
@@ -126,9 +127,9 @@ export function Register() {
           <div className="mt-6 text-center">
             <div className="text-sm text-muted-foreground">
               Masz już konto?{' '}
-              <Button 
-                variant="link" 
-                className="p-0 h-auto" 
+              <Button
+                variant="link"
+                className="p-0 h-auto"
                 onClick={() => navigate('/login')}
               >
                 Zaloguj się

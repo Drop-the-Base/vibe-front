@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { useAuth } from '../lib/auth-context';
+import { useAuth } from '../features/auth';
 import { entities } from '../lib/mock-data';
 import {
   Select,

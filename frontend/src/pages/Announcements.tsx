@@ -1,6 +1,6 @@
 import React from 'react';
 import { announcements } from '../lib/mock-data';
-import { useAuth } from '../lib/auth-context';
+import { useAuth } from '../features/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
