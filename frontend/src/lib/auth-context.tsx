@@ -1,12 +1,26 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { User, Entity, currentUser as mockCurrentUser, entities } from './mock-data';
+import { User, Entity, UserRole, entities } from './mock-data';
+
+const API_BASE_URL = (import.meta as any)?.env?.VITE_API_URL ?? 'http://localhost:8080';
+
+interface BackendUserDetails {
+  id?: number | string;
+  fullName?: string;
+  email?: string;
+  organization?: string;
+  status?: string;
+  roleName?: string;
+  permissions?: string[];
+  lastLogin?: string;
+  createdAt?: string;
+}
 
 interface StoredUser {
   id: string;
   name: string;
   email: string;
   password: string;
-  role: string;
+  role: UserRole;
   active: boolean;
   createdAt: string;
 }
@@ -46,6 +60,94 @@ const saveUsers = (users: StoredUser[]) => {
   localStorage.setItem('uknf_users', JSON.stringify(users));
 };
 
+const DEFAULT_LOGIN_ERROR = 'Nieprawidłowy login lub hasło';
+
+const ROLE_NAME_MAP: Record<string, UserRole> = {
+  ADMIN: 'admin',
+  INTERNAL: 'internal',
+  INTERNAL_USER: 'internal',
+  EXTERNAL_ADMIN: 'external_admin',
+  EXTERNAL_USER: 'external_user',
+};
+
+const mapRoleNameToUserRole = (roleName?: string): UserRole => {
+  if (!roleName) {
+    return 'internal';
+  }
+
+  const normalized = roleName.trim().toUpperCase().replace(/\s+/g, '_');
+  return ROLE_NAME_MAP[normalized] ?? 'internal';
+};
+
+const mapStatusToActive = (status?: string): boolean => {
+  if (!status) {
+    return true;
+  }
+
+  const normalized = status.trim().toLowerCase();
+  return normalized === 'active' || normalized === 'aktywny';
+};
+
+const mapBackendUserToUser = (details: BackendUserDetails, fallbackEmail: string): User => {
+  return {
+    id: details.id !== undefined && details.id !== null ? String(details.id) : `user-${Date.now()}`,
+    name: details.fullName?.trim() || details.email || fallbackEmail,
+    email: details.email || fallbackEmail,
+    role: mapRoleNameToUserRole(details.roleName),
+    entity: details.organization || undefined,
+    active: mapStatusToActive(details.status),
+    lastLogin: details.lastLogin ?? undefined,
+    createdAt: details.createdAt ?? new Date().toISOString(),
+  };
+};
+
+const mapStoredUserToUser = (stored: StoredUser): User => ({
+  id: stored.id,
+  name: stored.name,
+  email: stored.email,
+  role: stored.role,
+  active: stored.active,
+  createdAt: stored.createdAt,
+});
+
+const findLocalUser = (email: string, password: string): User | null => {
+  if (email === HARDCODED_USER.email && password === HARDCODED_USER.password) {
+    return mapStoredUserToUser(HARDCODED_USER);
+  }
+
+  const users = getStoredUsers();
+  const foundUser = users.find((u) => u.email === email && u.password === password);
+  return foundUser ? mapStoredUserToUser(foundUser) : null;
+};
+
+const extractErrorMessage = (rawBody: string): string => {
+  if (!rawBody) {
+    return DEFAULT_LOGIN_ERROR;
+  }
+
+  try {
+    const parsed = JSON.parse(rawBody);
+    if (typeof parsed === 'string') {
+      return parsed || DEFAULT_LOGIN_ERROR;
+    }
+
+    if (parsed && typeof parsed === 'object') {
+      if (typeof parsed.message === 'string' && parsed.message.trim()) {
+        return parsed.message;
+      }
+      if (typeof parsed.error === 'string' && parsed.error.trim()) {
+        return parsed.error;
+      }
+    }
+  } catch (error) {
+    if (rawBody.trim()) {
+      return rawBody;
+    }
+  }
+
+  return DEFAULT_LOGIN_ERROR;
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [currentEntity, setCurrentEntity] = useState<Entity | null>(null);
@@ -58,41 +160,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = async (email: string, password: string) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Sprawdź twardy użytkownik
-    if (email === HARDCODED_USER.email && password === HARDCODED_USER.password) {
-      const loggedInUser: User = {
-        id: HARDCODED_USER.id,
-        name: HARDCODED_USER.name,
-        email: HARDCODED_USER.email,
-        role: HARDCODED_USER.role as any,
-        active: HARDCODED_USER.active,
-        createdAt: HARDCODED_USER.createdAt,
-      };
-      setUser(loggedInUser);
-      sessionStorage.setItem('uknf_current_user', JSON.stringify(loggedInUser));
-      return;
-    }
+  const persistUserSession = (authenticatedUser: User) => {
+    setUser(authenticatedUser);
+    sessionStorage.setItem('uknf_current_user', JSON.stringify(authenticatedUser));
+  };
 
-    // Sprawdź zarejestrowanych użytkowników
-    const users = getStoredUsers();
-    const foundUser = users.find(u => u.email === email && u.password === password);
-    
-    if (foundUser) {
-      const loggedInUser: User = {
-        id: foundUser.id,
-        name: foundUser.name,
-        email: foundUser.email,
-        role: foundUser.role as any,
-        active: foundUser.active,
-        createdAt: foundUser.createdAt,
-      };
-      setUser(loggedInUser);
-      sessionStorage.setItem('uknf_current_user', JSON.stringify(loggedInUser));
-    } else {
-      throw new Error('Nieprawidłowy login lub hasło');
+  const login = async (email: string, password: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      const rawBody = await response.text();
+
+      if (!response.ok) {
+        throw new Error(extractErrorMessage(rawBody));
+      }
+
+      let backendUser: BackendUserDetails = {};
+
+      if (rawBody) {
+        try {
+          backendUser = JSON.parse(rawBody) as BackendUserDetails;
+        } catch (parseError) {
+          throw new Error('Nieprawidłowy format odpowiedzi serwera');
+        }
+      }
+
+      const authenticatedUser = mapBackendUserToUser(backendUser, email);
+      persistUserSession(authenticatedUser);
+    } catch (error: unknown) {
+      if (error instanceof TypeError) {
+        const fallbackUser = findLocalUser(email, password);
+
+        if (fallbackUser) {
+          persistUserSession(fallbackUser);
+          return;
+        }
+
+        throw new Error('Nie można połączyć się z serwerem uwierzytelniającym');
+      }
+
+      if (error instanceof Error) {
+        throw error;
+      }
+
+      throw new Error(DEFAULT_LOGIN_ERROR);
     }
   };
 
