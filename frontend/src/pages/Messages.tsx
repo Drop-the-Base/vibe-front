@@ -60,30 +60,61 @@ export function Messages() {
   const [composeAttachments, setComposeAttachments] = useState<AttachmentInfo[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const mapToRow = useCallback(
-    (dto: MessageDto): MessageRow => ({
+  const userIdentity = useMemo(() => {
+    if (!user) return null;
+    const email = user.email?.trim().toLowerCase();
+    const name = user.name?.trim().toLowerCase();
+    if (email) return email;
+    if (name) return name;
+    return null;
+  }, [user]);
+
+  const isVisibleMessage = useCallback(
+    (row: MessageRow) => {
+      if (!userIdentity) {
+        return false;
+      }
+      const from = row.from?.toLowerCase();
+      const to = row.to?.toLowerCase();
+      return from === userIdentity || to === userIdentity;
+    },
+    [userIdentity],
+  );
+
+  const mapToRow = useCallback((dto: MessageDto): MessageRow => {
+    const sender = dto.sender?.trim() ?? '';
+    const recipient = dto.recipient?.trim() ?? '';
+    const normalizedSender = sender.toLowerCase();
+    const read = Boolean(dto.readAt) || (userIdentity != null && normalizedSender === userIdentity);
+    return {
       id: dto.id != null ? dto.id.toString() : dto.threadId ?? ('tmp-' + Date.now().toString()),
       threadId: dto.threadId,
       subject: dto.subject,
-      from: dto.sender,
-      to: dto.recipient,
-      entityName: dto.entityRef ?? dto.recipient,
+      from: sender,
+      to: recipient,
+      entityName: dto.entityRef ?? recipient,
       date: dto.createdAt ?? new Date().toISOString(),
-      read: Boolean(dto.readAt),
+      read,
       hasAttachments: dto.hasAttachments,
       content: dto.content,
       status: dto.status,
       direction: dto.direction,
-    }),
-    [],
-  );
+    };
+  }, [userIdentity]);
 
   const loadMessages = useCallback(async () => {
+    if (!userIdentity) {
+      setLocalMessages([]);
+      setLoadError(null);
+      setIsLoading(false);
+      return;
+    }
     try {
       setIsLoading(true);
       setLoadError(null);
       const data = await fetchMessages();
-      setLocalMessages(data.map(mapToRow));
+      const mapped = data.map(mapToRow).filter(isVisibleMessage);
+      setLocalMessages(mapped);
     } catch (error) {
       const message =
         error instanceof ApiError ? error.message : 'Nie udalo sie pobrac wiadomosci.';
@@ -92,29 +123,55 @@ export function Messages() {
     } finally {
       setIsLoading(false);
     }
-  }, [mapToRow]);
+  }, [mapToRow, isVisibleMessage, userIdentity]);
 
   useEffect(() => {
     loadMessages();
   }, [loadMessages]);
 
+  useEffect(() => {
+    if (!userIdentity) {
+      setLocalMessages([]);
+      return;
+    }
+    setLocalMessages((prev) => prev.filter(isVisibleMessage));
+  }, [isVisibleMessage, userIdentity]);
+
   const applyUpdatedMessage = useCallback((updated: MessageRow) => {
-    setLocalMessages((prev) =>
-      prev.map((item) =>
-        item.id === updated.id
-          ? { ...item, ...updated, attachments: updated.attachments ?? item.attachments }
-          : item,
-      ),
-    );
-    setSelectedMessage((prev) =>
-      prev && prev.id === updated.id
-        ? { ...prev, ...updated, attachments: updated.attachments ?? prev.attachments }
-        : prev,
-    );
-  }, []);
+    setLocalMessages((prev) => {
+      if (!isVisibleMessage(updated)) {
+        return prev.filter((item) => item.id !== updated.id);
+      }
+      let found = false;
+      const mapped = prev.map((item) => {
+        if (item.id === updated.id) {
+          found = true;
+          return { ...item, ...updated, attachments: updated.attachments ?? item.attachments };
+        }
+        return item;
+      });
+      if (!found) {
+        return [updated, ...mapped];
+      }
+      return mapped;
+    });
+    setSelectedMessage((prev) => {
+      if (!prev || prev.id !== updated.id) {
+        return prev;
+      }
+      if (!isVisibleMessage(updated)) {
+        setIsDialogOpen(false);
+        return null;
+      }
+      return { ...prev, ...updated, attachments: updated.attachments ?? prev.attachments };
+    });
+  }, [isVisibleMessage]);
 
   const handleToggleRead = useCallback(
     async (row: MessageRow, shouldBeRead: boolean) => {
+      if (!userIdentity) {
+        return;
+      }
       const numericId = Number(row.id);
       const optimistic: MessageRow = { ...row, read: shouldBeRead };
       applyUpdatedMessage(optimistic);
@@ -141,7 +198,7 @@ export function Messages() {
         toast.error(message);
       }
     },
-    [applyUpdatedMessage, mapToRow],
+    [applyUpdatedMessage, mapToRow, userIdentity],
   );
 
   const openMessage = (message: MessageRow) => {
@@ -251,7 +308,11 @@ export function Messages() {
   ];
 
   const handleSend = async () => {
-    if (!composeSubject.trim() || !composeTo.trim() || !composeContent.trim()) {
+    const subjectValue = composeSubject.trim();
+    const recipientValue = composeTo.trim();
+    const contentValue = composeContent.trim();
+
+    if (!subjectValue || !recipientValue || !contentValue) {
       toast.error('Wypelnij temat, adresata i tresc wiadomosci.');
       return;
     }
@@ -261,6 +322,7 @@ export function Messages() {
       return;
     }
 
+    const senderIdentity = user.email?.trim() || user.name?.trim() || 'UKNF';
     const senderType = user.role === 'internal' || user.role === 'admin' ? 'internal' : 'external';
     const recipientType = senderType === 'internal' ? 'external' : 'internal';
     const attachments = composeAttachments.map((att) => ({ ...att }));
@@ -268,10 +330,10 @@ export function Messages() {
     try {
       setIsSending(true);
       const created = await createMessage({
-        subject: composeSubject.trim(),
-        content: composeContent.trim(),
-        sender: user.name || user.email || 'UKNF',
-        recipient: composeTo.trim(),
+        subject: subjectValue,
+        content: contentValue,
+        sender: senderIdentity,
+        recipient: recipientValue,
         senderRole: user.role,
         senderType,
         recipientType,
@@ -288,7 +350,9 @@ export function Messages() {
         attachments: attachments.length > 0 ? attachments : undefined,
       };
 
-      setLocalMessages((prev) => [newMessage, ...prev]);
+      if (isVisibleMessage(newMessage)) {
+        applyUpdatedMessage(newMessage);
+      }
       toast.success('Wiadomosc zostala wyslana.');
       setIsComposeOpen(false);
       setComposeSubject('');
