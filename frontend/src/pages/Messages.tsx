@@ -20,10 +20,11 @@ import { ScrollArea } from '../components/ui/scroll-area';
 import { Separator } from '../components/ui/separator';
 import { useAuth } from '../features/auth';
 import { createMessage, fetchMessages, MessageDto, updateMessageReadStatus } from '../shared/api/messages';
+import { listAttachments, uploadAttachment, downloadAttachmentUrl } from '../shared/api/messages/attachments';
 import { ApiError } from '../shared/api/api-client';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
-type AttachmentInfo = { name: string; size: string };
+type AttachmentInfo = { id?: number; name: string; size: string };
 
 type MessageRow = {
   id: string;
@@ -58,6 +59,8 @@ export function Messages() {
   const [composeTo, setComposeTo] = useState('');
   const [composeContent, setComposeContent] = useState('');
   const [composeAttachments, setComposeAttachments] = useState<AttachmentInfo[]>([]);
+  // keep actual File objects so we can upload them after creating a message
+  const [composeFiles, setComposeFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const userIdentity = useMemo(() => {
@@ -201,13 +204,7 @@ export function Messages() {
     [applyUpdatedMessage, mapToRow, userIdentity],
   );
 
-  const openMessage = (message: MessageRow) => {
-    setSelectedMessage(message);
-    setIsDialogOpen(true);
-    if (!message.read) {
-      void handleToggleRead(message, true);
-    }
-  };
+  // openMessage is implemented later as async so it can fetch attachments
 
   const closeMessage = () => {
     setIsDialogOpen(false);
@@ -342,8 +339,42 @@ export function Messages() {
         direction: senderType === 'internal' ? 'outbound' : 'inbound',
         hasAttachments: attachments.length > 0,
       });
+        // if we have files selected, upload them now
+        if (composeFiles.length > 0 && created.id != null) {
+          try {
+            // upload sequentially to keep memory low and simplify error handling
+            for (const f of composeFiles) {
+              await uploadAttachment(Number(created.id), f);
+            }
+          } catch (err) {
+            // non-fatal: inform user but continue
+            console.error('Failed to upload attachments', err);
+            toast.error('Nie udalo sie wgrac zalacznikow.');
+          }
+        }
 
       const baseMessage = mapToRow(created);
+      // fetch persisted attachments from server if any
+      if (created.id != null) {
+        try {
+          const ats = await listAttachments(Number(created.id));
+          if (ats && ats.length > 0) {
+            // map to AttachmentInfo (id + name + size)
+            const mapped = ats.map(a => ({ id: a.id, name: a.fileName, size: formatBytes(a.fileSize) }));
+            baseMessage.hasAttachments = true;
+            // attach to message object below
+            // also clear composeFiles now that they've been uploaded
+            setComposeFiles([]);
+            setComposeAttachments([]);
+            const newMessageFromServer = { ...baseMessage, attachments: mapped };
+            if (isVisibleMessage(newMessageFromServer)) {
+              applyUpdatedMessage(newMessageFromServer);
+            }
+          }
+        } catch (err) {
+          // ignore attachment list errors
+        }
+      }
       const newMessage: MessageRow = {
         ...baseMessage,
         hasAttachments: baseMessage.hasAttachments || attachments.length > 0,
@@ -367,6 +398,26 @@ export function Messages() {
       setIsSending(false);
     }
   };
+
+    const openMessage = async (message: MessageRow) => {
+      setSelectedMessage(message);
+      setIsDialogOpen(true);
+      if (!message.read) {
+        void handleToggleRead(message, true);
+      }
+
+      // load attachments for this message from API if possible
+      const numericId = Number(message.id);
+      if (Number.isFinite(numericId)) {
+        try {
+          const ats = await listAttachments(numericId);
+          const mapped = ats.map(a => ({ name: a.fileName, size: formatBytes(a.fileSize) }));
+          setSelectedMessage(prev => prev ? { ...prev, attachments: mapped, hasAttachments: mapped.length > 0 } : prev);
+        } catch (err) {
+          // ignore
+        }
+      }
+    };
 
   return (
     <>
@@ -507,7 +558,15 @@ export function Messages() {
                                   <p className="text-xs text-muted-foreground">{attachment.size}</p>
                                 </div>
                               </div>
-                              <Button variant="ghost" size="sm">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (!attachment.id) return;
+                                  const url = downloadAttachmentUrl(attachment.id);
+                                  window.open(url, '_blank');
+                                }}
+                              >
                                 <Download className="h-4 w-4" />
                               </Button>
                             </div>
@@ -595,11 +654,14 @@ export function Messages() {
                       const files = e.target.files;
                       if (!files) return;
                       const arr: AttachmentInfo[] = [];
+                      const fileArr: File[] = [];
                       for (let i = 0; i < files.length; i++) {
                         const f = files[i];
                         arr.push({ name: f.name, size: formatBytes(f.size) });
+                        fileArr.push(f);
                       }
                       setComposeAttachments((prev) => [...prev, ...arr]);
+                      setComposeFiles((prev) => [...prev, ...fileArr]);
                       // reset input so same file can be picked again if needed
                       e.currentTarget.value = '';
                     }}
@@ -633,6 +695,7 @@ export function Messages() {
                 setIsComposeOpen(false);
                 // clear form
                 setComposeSubject(''); setComposeTo(''); setComposeContent(''); setComposeAttachments([]);
+                setComposeFiles([]);
               }}>
                 Anuluj
               </Button>
