@@ -101,10 +101,16 @@ export function Login() {
 
                     <div className="mt-6 p-4 bg-muted rounded-lg">
                         <p className="text-xs text-muted-foreground">
-                            Demo - Login Admin: <strong>admin@example.com</strong>, Hasło: <strong>admin123</strong>
+                            Demo - Login Admin:
                         </p>
                         <p className="text-xs text-muted-foreground">
-                            Demo - Login Admin: <strong>employee@example.com</strong>,
+                            <strong>admin@example.com</strong>, Hasło: <strong>admin123</strong>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Demo - Login employee:
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            <strong>employee@example.com</strong>,
                             Hasło: <strong>employee123</strong>
                         </p>
                     </div>
