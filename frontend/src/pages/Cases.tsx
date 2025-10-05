@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { cases } from '../lib/mock-data';
+import React, { useEffect, useMemo, useState } from 'react';
+import { cases as mockCases } from '../lib/mock-data';
 import { DataTable, Column } from '../components/DataTable';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -11,8 +11,75 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
+import { casesApi, type CaseDto } from '../shared/api/cases';
+import { cn } from '../lib/utils';
+
+type CaseRow = {
+  id: string;
+  title: string;
+  entityName: string;
+  status: string;
+  priority: string;
+  assignedTo: string | null;
+  createdDate: string;
+  updatedDate: string;
+  dueDate: string | null;
+};
+
+const mapDtoToRow = (item: CaseDto): CaseRow => ({
+  id: item.caseNumber || `CASE-${item.id}`,
+  title: item.title,
+  entityName: item.entityName || 'Nieznany podmiot',
+  status: item.status ?? 'new',
+  priority: item.priority ?? 'medium',
+  assignedTo: item.assignedTo,
+  createdDate: item.createdAt,
+  updatedDate: item.updatedAt,
+  dueDate: item.dueAt,
+});
+
+const mapMockToRow = (item: (typeof mockCases)[number]): CaseRow => ({
+  id: item.id,
+  title: item.title,
+  entityName: item.entityName,
+  status: item.status,
+  priority: item.priority,
+  assignedTo: item.assignedTo,
+  createdDate: item.createdDate,
+  updatedDate: item.updatedDate,
+  dueDate: null,
+});
 
 export function Cases() {
+  const [caseItems, setCaseItems] = useState<CaseRow[]>(() => mockCases.map(mapMockToRow));
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const data = await casesApi.list();
+        if (!mounted) return;
+        setCaseItems(data.map(mapDtoToRow));
+        setError(null);
+      } catch (err) {
+        if (!mounted) return;
+        console.warn('Nie udało się pobrać listy spraw', err);
+        setError('Nie udało się pobrać listy spraw z serwera. Wyświetlamy dane demonstracyjne.');
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case 'closed':
@@ -60,7 +127,7 @@ export function Cases() {
     () =>
       Array.from(
         new Set(
-          cases
+          caseItems
             .map((item) => item.status)
             .filter((status): status is string => Boolean(status)),
         ),
@@ -68,14 +135,14 @@ export function Cases() {
         label: getStatusLabel(status),
         value: status,
       })),
-    [],
+    [caseItems],
   );
 
   const priorityOptions = useMemo(
     () =>
       Array.from(
         new Set(
-          cases
+          caseItems
             .map((item) => item.priority)
             .filter((priority): priority is string => Boolean(priority)),
         ),
@@ -83,14 +150,14 @@ export function Cases() {
         label: getPriorityLabel(priority),
         value: priority,
       })),
-    [],
+    [caseItems],
   );
 
   const assigneeOptions = useMemo(
     () =>
       Array.from(
         new Set(
-          cases
+          caseItems
             .map((item) => item.assignedTo)
             .filter((assignee): assignee is string => Boolean(assignee)),
         ),
@@ -98,10 +165,10 @@ export function Cases() {
         label: assignee,
         value: assignee,
       })),
-    [],
+    [caseItems],
   );
 
-  const columns: Column<typeof cases[0]>[] = [
+  const columns: Column<CaseRow>[] = [
     {
       key: 'id',
       label: 'ID',
@@ -156,6 +223,10 @@ export function Cases() {
     },
   ];
 
+  const totalCases = caseItems.length;
+  const inProgressCount = caseItems.filter((item) => item.status === 'in_progress').length;
+  const highPriorityCount = caseItems.filter((item) => item.priority === 'high').length;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -171,20 +242,26 @@ export function Cases() {
         </Button>
       </div>
 
+      {error && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
       <div className="flex gap-2">
-        <Button variant="outline" size="sm">
-          Wszystkie ({cases.length})
+        <Button variant="outline" size="sm" className={cn(loading && 'opacity-75')}>
+          Wszystkie ({totalCases})
         </Button>
         <Button variant="outline" size="sm">
-          W trakcie ({cases.filter(c => c.status === 'in_progress').length})
+          W trakcie ({inProgressCount})
         </Button>
         <Button variant="outline" size="sm">
-          Wysoki priorytet ({cases.filter(c => c.priority === 'high').length})
+          Wysoki priorytet ({highPriorityCount})
         </Button>
       </div>
 
       <DataTable
-        data={cases}
+        data={caseItems}
         columns={columns}
         searchPlaceholder="Szukaj spraw..."
         exportFilename="sprawy"
