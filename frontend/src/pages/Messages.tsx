@@ -411,7 +411,7 @@ export function Messages() {
       if (Number.isFinite(numericId)) {
         try {
           const ats = await listAttachments(numericId);
-          const mapped = ats.map(a => ({ name: a.fileName, size: formatBytes(a.fileSize) }));
+          const mapped = ats.map(a => ({ id: a.id, name: a.fileName, size: formatBytes(a.fileSize) }));
           setSelectedMessage(prev => prev ? { ...prev, attachments: mapped, hasAttachments: mapped.length > 0 } : prev);
         } catch (err) {
           // ignore
@@ -558,17 +558,20 @@ export function Messages() {
                                   <p className="text-xs text-muted-foreground">{attachment.size}</p>
                                 </div>
                               </div>
-                              <Button
+                                <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
                                   if (!attachment.id) return;
+                                  // build URL synchronously so window.open is considered a user gesture
                                   const url = downloadAttachmentUrl(attachment.id);
-                                  window.open(url, '_blank');
+                                  // open in new tab; use noopener for safety
+                                  window.open(url, '_blank', 'noopener,noreferrer');
                                 }}
-                              >
+                                title="Pobierz zalacznik"
+                                >
                                 <Download className="h-4 w-4" />
-                              </Button>
+                                </Button>
                             </div>
                           ))}
                         </div>
