@@ -51,6 +51,8 @@ export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [notificationsCount] = useState(3);
 
+  const isAdmin = user?.role === 'admin';
+
   const navigation = [
     { name: 'Pulpit główny', href: '/', icon: Home },
     {
@@ -66,16 +68,20 @@ export function Layout() {
         { name: 'Kartoteka podmiotów', href: '/entities' },
       ],
     },
-    {
-      name: 'Administracja',
-      icon: Settings,
-      children: [
-        { name: 'Użytkownicy', href: '/admin/users' },
-        { name: 'Wnioski o dostęp', href: '/admin/requests' },
-        { name: 'Role i uprawnienia', href: '/admin/roles' },
-        { name: 'Polityka haseł', href: '/admin/password-policy' },
-      ],
-    },
+    ...(isAdmin
+      ? [
+          {
+            name: 'Administracja',
+            icon: Settings,
+            children: [
+              { name: 'Użytkownicy', href: '/admin/users' },
+              { name: 'Wnioski o dostęp', href: '/admin/requests' },
+              { name: 'Role i uprawnienia', href: '/admin/roles' },
+              { name: 'Polityka haseł', href: '/admin/password-policy' },
+            ],
+          },
+        ]
+      : []),
   ];
 
   const getBreadcrumbs = () => {
@@ -92,7 +98,7 @@ export function Layout() {
       if (segments[0] === 'announcements') breadcrumbs.push({ name: 'Tablica ogłoszeń', href: '/announcements' });
       if (segments[0] === 'faq') breadcrumbs.push({ name: 'FAQ', href: '/faq' });
       if (segments[0] === 'entities') breadcrumbs.push({ name: 'Kartoteka podmiotów', href: '/entities' });
-      if (segments[0] === 'admin') {
+      if (segments[0] === 'admin' && isAdmin) {
         breadcrumbs.push({ name: 'Administracja', href: '/admin/users' });
         if (segments[1] === 'users') breadcrumbs.push({ name: 'Użytkownicy', href: '/admin/users' });
         if (segments[1] === 'requests') breadcrumbs.push({ name: 'Wnioski o dostęp', href: '/admin/requests' });
