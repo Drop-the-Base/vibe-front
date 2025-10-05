@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './features/auth';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
@@ -27,6 +27,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AdminRoute() {
+  const { user } = useAuth();
+
+  if (user?.role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+
+  return <Outlet />;
+}
+
 function AppRoutes() {
   const { isAuthenticated } = useAuth();
 
@@ -52,7 +62,7 @@ function AppRoutes() {
         <Route path="faq" element={<FAQ />} />
         <Route path="entities" element={<Entities />} />
         
-        <Route path="admin">
+        <Route path="admin" element={<AdminRoute />}>
           <Route path="users" element={<Users />} />
           <Route path="requests" element={<AccessRequests />} />
           <Route path="roles" element={<Roles />} />
