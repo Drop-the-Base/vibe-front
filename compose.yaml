@@ -10,29 +10,22 @@ services:
       - "1433:1433"
     volumes:
       - mssql_data:/var/opt/mssql
-      - ./init-mssql.sh:/docker-entrypoint-initdb.d/init-mssql.sh
-    command: /bin/bash -c "/docker-entrypoint-initdb.d/init-mssql.sh & exec /opt/mssql/bin/sqlservr"
+      - ./init-mssql.sh:/docker-entrypoint-initdb.d/init-mssql.sh:ro
+    command: >
+      /bin/bash -lc "
+        /opt/mssql/bin/sqlservr & 
+        until /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Database123!' -C -Q 'SELECT 1' >/dev/null 2>&1; do
+          echo 'Waiting for SQL Server to be up...'; sleep 1;
+        done;
+        bash /docker-entrypoint-initdb.d/init-mssql.sh;
+        wait -n
+      "
     healthcheck:
-      test: [ "CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P Database123! -C -Q 'SELECT 1' || exit 1" ]
+      # zdrowe dopiero gdy *konkretna* baza istnieje
+      test: [ "CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Database123!' -C -Q \"IF DB_ID('uknf') IS NULL BEGIN RAISERROR('DB missing',16,1); END ELSE SELECT 1\" >/dev/null" ]
       interval: 5s
       timeout: 3s
       retries: 30
-
-  frontend:
-    container_name: frontend
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - REACT_APP_API_URL=http://host.docker.internal:8080
-        - WDS_SOCKET_PORT=3000
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   backend:
     restart: always
@@ -49,6 +42,25 @@ services:
       - SPRING_FLYWAY_URL=jdbc:sqlserver://mssql:1433;databaseName=uknf;encrypt=true;trustServerCertificate=true
       - SPRING_FLYWAY_USER=sa
       - SPRING_FLYWAY_PASSWORD=Database123!
+    depends_on:
+      mssql:
+        condition: service_healthy
+
+  frontend:
+    container_name: frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://host.docker.internal:8080
+      - WDS_SOCKET_PORT=3000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   mssql_data:
