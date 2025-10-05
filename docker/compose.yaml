@@ -1,4 +1,22 @@
 services:
+  backend:
+    build:
+      context: ../backend
+    environment:
+      - SPRING_PROFILES_ACTIVE=
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../backend/uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ../frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: mssql-local
