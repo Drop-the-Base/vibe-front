@@ -13,3 +13,8 @@
 ## Running on docker (runs on macos - sorry windows users)
 
  Run  -> docker compose up -d
+ 
+## Test users
+
+ADMIN: admin@example.com  password: admin123 
+EMPLOYEE: employee@example.com password: employee123
