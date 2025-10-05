@@ -9,3 +9,7 @@
 
   Run `npm run dev` to start the development server.
   
+
+## Running on docker (runs on macos - sorry windows users)
+
+ Run  -> docker compose up -d
