@@ -1,22 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../features/auth';
-import {
-  reports,
-  messages,
-  accessRequests,
-  announcements,
-  activities,
-  entities,
-  cases,
-} from '../lib/mock-data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Separator } from '../components/ui/separator';
 import {
-  FileText,
   Mail,
   UserPlus,
   Megaphone,
@@ -29,19 +19,33 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { formatDateTime } from '../lib/utils';
+import { apiClient } from '../shared/api/api-client';
+import { useApiData } from '../shared/hooks/use-api-data';
+
+interface DashboardOverviewDto {
+  entities: number;
+  unreadMessages: number;
+  pendingRequests: number;
+  unreadAnnouncements: number;
+  recentReports: Array<{ id: string; title: string; entity: string; status: string; dueDate?: string | null }>;
+  recentCases: Array<{ id: string; title: string; entity: string; status: string; priority: string }>;
+  recentActivities: Array<{ type: string; description: string; actor: string; timestamp?: string | null }>;
+}
+
+const emptyOverview: DashboardOverviewDto = {
+  entities: 0,
+  unreadMessages: 0,
+  pendingRequests: 0,
+  unreadAnnouncements: 0,
+  recentReports: [],
+  recentCases: [],
+  recentActivities: [],
+};
 
 export function Dashboard() {
   const { user } = useAuth();
-
-  const unreadMessages = messages.filter(m => !m.read).length;
-  const pendingRequests = accessRequests.filter(r => r.status === 'pending').length;
-  const unreadAnnouncements = announcements.filter(
-    a => !a.readBy.includes(user?.id || '')
-  ).length;
-
-  const recentReports = reports.slice(0, 5);
-  const recentCases = cases.slice(0, 3);
-  const recentActivities = activities.slice(0, 6);
+  const { data, loading, error } = useApiData<DashboardOverviewDto>(() => apiClient.get('/dashboard'), []);
+  const overview = data ?? emptyOverview;
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -70,11 +74,14 @@ export function Dashboard() {
       in_progress: 'W trakcie',
       pending: 'Oczekująca',
       closed: 'Zamknięta',
+      low: 'Niski',
+      medium: 'Średni',
+      high: 'Wysoki',
     };
     return labels[status] || status;
   };
 
-  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+  const getStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch (status) {
       case 'accepted':
       case 'closed':
@@ -92,18 +99,18 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Panel */}
       <Card>
         <CardHeader>
           <CardTitle>Witaj, {user?.name}!</CardTitle>
           <CardDescription>
-            Rola: {user?.role === 'internal' ? 'Pracownik UKNF' : 'Administrator podmiotu'} | 
+            Rola: {user?.role === 'internal' ? 'Pracownik UKNF' : 'Administrator podmiotu'} |
             Ostatnie logowanie: {user?.lastLogin ? formatDateTime(user.lastLogin) : 'N/A'}
+            {loading && ' (ładowanie danych...)'}
+            {error && <span className="text-destructive"> | {error}</span>}
           </CardDescription>
         </CardHeader>
       </Card>
 
-      {/* Dashboard Tiles */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -111,10 +118,8 @@ export function Dashboard() {
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl">{entities.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              aktywnych podmiotów nadzorowanych
-            </p>
+            <div className="text-2xl">{overview.entities}</div>
+            <p className="text-xs text-muted-foreground mt-1">aktywne podmioty nadzorowane</p>
           </CardContent>
         </Card>
 
@@ -124,10 +129,8 @@ export function Dashboard() {
             <Mail className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl">{unreadMessages}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              nieprzeczytanych wiadomości
-            </p>
+            <div className="text-2xl">{overview.unreadMessages}</div>
+            <p className="text-xs text-muted-foreground mt-1">nieprzeczytane wiadomości</p>
             <Button variant="link" className="p-0 h-auto mt-2" asChild>
               <Link to="/messages">Zobacz wszystkie →</Link>
             </Button>
@@ -140,10 +143,8 @@ export function Dashboard() {
             <UserPlus className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl">{pendingRequests}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              oczekujących wniosków
-            </p>
+            <div className="text-2xl">{overview.pendingRequests}</div>
+            <p className="text-xs text-muted-foreground mt-1">wnioski oczekujące na decyzję</p>
             <Button variant="link" className="p-0 h-auto mt-2" asChild>
               <Link to="/admin/requests">Przejdź do wniosków →</Link>
             </Button>
@@ -156,10 +157,8 @@ export function Dashboard() {
             <Megaphone className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl">{unreadAnnouncements}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              nieprzeczytanych ogłoszeń
-            </p>
+            <div className="text-2xl">{overview.unreadAnnouncements}</div>
+            <p className="text-xs text-muted-foreground mt-1">komunikaty wymagające uwagi</p>
             <Button variant="link" className="p-0 h-auto mt-2" asChild>
               <Link to="/announcements">Zobacz tablicę →</Link>
             </Button>
@@ -167,9 +166,7 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent Reports */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -183,7 +180,7 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentReports.map((report) => (
+              {overview.recentReports.map((report) => (
                 <div
                   key={report.id}
                   className="flex items-start justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors"
@@ -193,54 +190,59 @@ export function Dashboard() {
                       {getStatusIcon(report.status)}
                       <p className="truncate">{report.title}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">{report.entityName}</p>
+                    <p className="text-xs text-muted-foreground">{report.entity}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Termin: {formatDateTime(report.dueDate)}
+                      Termin: {report.dueDate ? formatDateTime(report.dueDate) : 'Brak terminu'}
                     </p>
                   </div>
-                  <Badge variant={getStatusVariant(report.status)}>
-                    {getStatusLabel(report.status)}
-                  </Badge>
+                  <Badge variant={getStatusVariant(report.status)}>{getStatusLabel(report.status)}</Badge>
                 </div>
               ))}
+              {overview.recentReports.length === 0 && (
+                <p className="text-sm text-muted-foreground">Brak najnowszych sprawozdań.</p>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Recent Activities */}
         <Card>
           <CardHeader>
-            <CardTitle>Ostatnie zdarzenia</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Ostatnie aktywności</CardTitle>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/messages">
+                  Szczegóły <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[400px] pr-4">
+            <ScrollArea className="h-64">
               <div className="space-y-4">
-                {recentActivities.map((activity, index) => (
-                  <div key={activity.id}>
-                    <div className="flex gap-3">
+                {overview.recentActivities.map((activity, index) => (
+                  <React.Fragment key={`${activity.description}-${index}`}>
+                    <div className="flex gap-4">
                       <div className="mt-1">
-                        <div className="w-2 h-2 rounded-full bg-primary" />
+                        <CheckCircle2 className="h-4 w-4 text-primary" />
                       </div>
-                      <div className="flex-1 space-y-1">
-                        <p className="text-sm">{activity.description}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{formatDateTime(activity.timestamp)}</span>
-                          <span>•</span>
-                          <span>{activity.user}</span>
-                        </div>
+                      <div>
+                        <p className="text-sm font-medium">{activity.description}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {activity.timestamp ? formatDateTime(activity.timestamp) : 'Brak daty'} · {activity.actor}
+                        </p>
                       </div>
                     </div>
-                    {index < recentActivities.length - 1 && (
-                      <Separator className="my-3" />
-                    )}
-                  </div>
+                    {index < overview.recentActivities.length - 1 && <Separator className="my-3" />}
+                  </React.Fragment>
                 ))}
+                {overview.recentActivities.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Brak ostatnich aktywności.</p>
+                )}
               </div>
             </ScrollArea>
           </CardContent>
         </Card>
 
-        {/* Recent Cases */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -254,32 +256,27 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentCases.map((caseItem) => (
-                <div
-                  key={caseItem.id}
-                  className="p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors"
-                >
+              {overview.recentCases.map((caseItem) => (
+                <div key={caseItem.id} className="p-3 rounded-lg border hover:bg-accent transition-colors">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Briefcase className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm">{caseItem.id}</span>
                     </div>
-                    <Badge variant={getStatusVariant(caseItem.status)}>
-                      {getStatusLabel(caseItem.status)}
-                    </Badge>
+                    <Badge variant={getStatusVariant(caseItem.status)}>{getStatusLabel(caseItem.status)}</Badge>
                   </div>
                   <p className="mb-1">{caseItem.title}</p>
-                  <p className="text-xs text-muted-foreground">{caseItem.entityName}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Przypisane: {caseItem.assignedTo}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{caseItem.entity}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Priorytet: {getStatusLabel(caseItem.priority)}</p>
                 </div>
               ))}
+              {overview.recentCases.length === 0 && (
+                <p className="text-sm text-muted-foreground">Brak spraw w toku.</p>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Announcements */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -292,45 +289,13 @@ export function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {announcements.slice(0, 3).map((announcement) => {
-                const isRead = announcement.readBy.includes(user?.id || '');
-                return (
-                  <div
-                    key={announcement.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                      !isRead ? 'bg-blue-50 border-blue-200' : 'hover:bg-accent'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Megaphone className="h-4 w-4 text-muted-foreground" />
-                        {!isRead && (
-                          <Badge variant="destructive" className="text-xs">
-                            Nowe
-                          </Badge>
-                        )}
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDateTime(announcement.publishedDate)}
-                      </span>
-                    </div>
-                    <p className="mb-1">{announcement.title}</p>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {announcement.content}
-                    </p>
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      Przeczytało: {announcement.readBy.length} / {announcement.totalRecipients}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Sprawdź moduł komunikatów, aby potwierdzić zapoznanie z ogłoszeniami priorytetowymi.
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Security Indicators */}
       <Card>
         <CardHeader>
           <CardTitle>Wskaźniki bezpieczeństwa</CardTitle>
